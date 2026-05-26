@@ -30,3 +30,4 @@ venv/
 # Other directories
 /.cache/
 
+.env
