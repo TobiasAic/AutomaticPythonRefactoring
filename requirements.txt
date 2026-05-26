@@ -1,4 +1,3 @@
-pyautogen
 openai
 keyboard
 rope
