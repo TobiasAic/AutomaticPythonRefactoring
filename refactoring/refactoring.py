@@ -1,4 +1,4 @@
-from refactoring.evaluation import RefactoringEvaluation 
+from refactoring.refactoring_evaluation import RefactoringEvaluation 
 
 class Refactoring:
     def __init__(self):

@@ -1,6 +1,6 @@
 import difflib
 
-from refactoring import Refactoring
+from refactoring.refactoring import Refactoring
 
 class FreeEditRefactoring(Refactoring):
     def __init__(self, old_code: str, new_code: str):
