@@ -1,6 +1,6 @@
 from autogen import config_list_from_json
 import os
-from helper_config import *
+from old_src.helper_config import *
 
 edit_file_matplotlib = 'E:/AutoGenCodeReadabilityProjects/pandas-main/pythonProject/.venv/Lib/site-packages/matplotlib/backends/backend_agg.py'  # 544 LOC
 test_file_matplotlib = 'E:/AutoGenCodeReadabilityProjects/pandas-main/pythonProject/.venv/Lib/site-packages/matplotlib/tests/test_agg.py'
