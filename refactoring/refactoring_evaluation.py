@@ -1,12 +1,11 @@
 from dataclasses import dataclass
-from enum import Enum
-
-class RefactoringGrade(Enum):
-    incorrect = 0
-    correct = 1
-    useful = 2
 
 @dataclass
 class RefactoringEvaluation:
     description: str
-    grade: RefactoringGrade
+    correct: bool
+    grade: int
+
+    def __post_init__(self):
+        if not (0 <= self.grade <= 10):
+            raise ValueError("Grade must be an integer between 0 and 10.")
