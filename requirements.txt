@@ -10,3 +10,4 @@ libcst
 PyQt5
 pytest
 python-dotenv
+GitPython
