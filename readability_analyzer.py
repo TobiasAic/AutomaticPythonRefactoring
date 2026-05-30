@@ -51,7 +51,22 @@ class ReadabilityMetrics:
         print(f"Maintainability Index (MI): {self.maintainability_index}")
 
 class ReadabilityAnalyzer:
-    def analyze_file(code: str) -> ReadabilityMetrics:
+    def __init__(self):
+        self.metrics = dict()
+
+    def record_metrics(self, filepath: str):
+        metrics = self.analyze_file(filepath)
+        if self.metrics.get(filepath) is None:
+            self.metrics[filepath] = []
+        self.metrics[filepath].append(metrics)
+
+    def analyze_file(filepath: str) -> ReadabilityMetrics:
+        code = ""
+        with open(filepath, 'r') as file:
+            code = file.read()
+        return ReadabilityAnalyzer.analyze_code(code)
+
+    def analyze_code(code: str) -> ReadabilityMetrics:
         # Get Cyclomatic Complexity results
         cc_results = cc_visit(code)
         # Get raw metrics (including LOC)
