@@ -4,7 +4,7 @@ import logging
 
 from refactoring.refactoring import Refactoring
 from refactoring.refactoring_evaluation import RefactoringEvaluation
-from llm import LLM
+from llm.llm import LLM
 
 class RefactoringEvaluator:
     prompt = """
