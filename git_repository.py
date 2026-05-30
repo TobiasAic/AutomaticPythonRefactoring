@@ -3,7 +3,7 @@ from git import Repo
 class GitRepository:
     def __init__(self, repo_path: str):
         try:
-            self.repo = Repo(repo_path)
+            self.repo = Repo.init(repo_path)
         except Exception as e:
             raise Exception(f"Could not initialize Git repository at {repo_path}: {str(e)}")
         
