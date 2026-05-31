@@ -1,9 +1,13 @@
 from git import Repo
+from git.exc import InvalidGitRepositoryError
 
 class GitRepository:
     def __init__(self, repo_path: str):
         try:
+            self.repo = Repo(repo_path)
+        except InvalidGitRepositoryError as e:
             self.repo = Repo.init(repo_path)
+            self.commit_changes("Initial commit") # create an initial commit so that a branch can be created later
         except Exception as e:
             raise Exception(f"Could not initialize Git repository at {repo_path}: {str(e)}")
         
