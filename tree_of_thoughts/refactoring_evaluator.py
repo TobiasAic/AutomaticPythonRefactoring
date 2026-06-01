@@ -35,7 +35,7 @@ class RefactoringEvaluator:
             refactoring_evaluation = self.extract_evaluation(response)
             return refactoring_evaluation
         except ValueError as e:
-            logger = logging.getLogger(__name__)
+            logger = logging.getLogger(f"refactoring.{__name__}")
             logger.error(f"LLM did not return a valid evaluation: {response}")
             return None
 

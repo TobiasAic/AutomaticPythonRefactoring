@@ -44,7 +44,7 @@ class RefactoringGenerator:
             try:
                 refactored_code = self.extract_python_code(response)
             except ValueError as e:
-                logger = logging.getLogger(__name__)
+                logger = logging.getLogger(f"refactoring.{__name__}")
                 logger.debug(f"Failed to extract Python code from LLM response: {response}")
                 continue
             refactoring = FreeEditRefactoring(code_segment, refactored_code)

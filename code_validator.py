@@ -26,7 +26,7 @@ class CodeValidator:
 
     def run_tests(test_file_path: str) -> bool:
         result = subprocess.run(['pytest', test_file_path], capture_output=True, text=True)
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger(f"refactoring.{__name__}")
         logger.debug(f"Pytest stdout: {result.stdout}")
         logger.debug(f"Pytest stderr: {result.stderr}")
         return result.returncode == 0
