@@ -24,10 +24,11 @@ class GitRepository:
         except Exception as e:
             raise Exception(f"Failed to create and switch to branch '{branch_name}': {str(e)}")
 
-    def commit_changes(self, message: str):
+    def commit_changes(self, message: str) -> str:
         try:
             self.repo.git.add(A=True)
-            self.repo.index.commit(message)
+            commit = self.repo.index.commit(message)
+            return commit.hexsha
         except Exception as e:
             raise Exception(f"Failed to commit changes: {str(e)}") 
         
