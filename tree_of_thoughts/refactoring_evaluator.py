@@ -16,7 +16,7 @@ class RefactoringEvaluator:
         "grade": 0-10,
     }}
 
-    The description should be a fitting commit message explaining what was refactored and why.
+    The description should be a fitting commit message explaining what was refactored.
     The correct field should only be true if the refactoring does not alter the behavior of the code.
     The grade should be an integer between 0 and 10, where 0 indicates a poor refactoring that does not improve code quality, and 10 indicates an excellent refactoring that significantly enhances code quality.
 
