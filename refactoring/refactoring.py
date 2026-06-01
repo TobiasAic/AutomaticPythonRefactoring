@@ -3,6 +3,7 @@ from refactoring.refactoring_evaluation import RefactoringEvaluation
 class Refactoring:
     def __init__(self):
         self.evaluation = None
+        self.commit_hash: str = None
 
     def get_diff(self) -> str:
         pass
