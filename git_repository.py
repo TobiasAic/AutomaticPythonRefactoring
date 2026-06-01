@@ -55,3 +55,15 @@ class GitRepository:
             self.repo.git.checkout(branch_name)
         except Exception as e:
             raise Exception(f"Failed to switch to branch '{branch_name}': {str(e)}")
+        
+    def move_branch(self, branch_name: str):
+        try:
+            self.repo.git.branch('-f', branch_name)
+        except Exception as e:
+            raise Exception(f"Failed to move branch '{branch_name}': {str(e)}")
+        
+    def checkout_commit(self, commit_hash: str):
+        try:
+            self.repo.git.checkout(commit_hash)
+        except Exception as e:
+            raise Exception(f"Failed to checkout commit '{commit_hash}': {str(e)}")
