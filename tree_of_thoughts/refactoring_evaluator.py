@@ -24,12 +24,12 @@ class RefactoringEvaluator:
     {diff}
     """
 
-    def __init__(self, llm):
+    def __init__(self, llm: LLM):
         self.llm = llm
 
     def evaluate(self, refactoring: Refactoring) -> Optional[RefactoringEvaluation]:
         prompt = RefactoringEvaluator.prompt.format(diff=refactoring.get_diff())
-        response = self.llm_generate(prompt)
+        response = self.llm.generate(prompt)
 
         try: 
             refactoring_evaluation = self.extract_evaluation(response)
