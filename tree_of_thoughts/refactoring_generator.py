@@ -6,8 +6,7 @@ from refactoring.free_edit_refactoring import FreeEditRefactoring
 
 class RefactoringGenerator:
     prompt = """
-    This is a complete py-file which is part of a larger library. Try to improve its readability
-    by applying the following principles (if possible):
+    This is a complete py-file which is part of a larger library. Try to improve its readability by applying the following principles (if possible):
 
     1. Try to reduce the complexity of nested conditions.
     2. Try to shorten methods that are too long by splitting them up into smaller ones.
@@ -25,6 +24,10 @@ class RefactoringGenerator:
     8. Do not add any 'import' statements in your response. This also means that you must not add any new functionalities
     to the code that depend on such 'import' statements.
     9. Do not create new classes or rename old ones. Only edit existing ones if needed.
+
+    Return the complete code with only a single, small refactoring applied that improves readability. 
+    Do not apply multiple refactorings at once, only one of the size of a regular commit.
+    The code you return needs to be complete and have the same functionality as the original code.
 
     {code_segment}
     """
