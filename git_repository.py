@@ -36,3 +36,15 @@ class GitRepository:
             self.repo.git.reset('--hard')
         except Exception as e:
             raise Exception(f"Failed to revert changes: {str(e)}")
+        
+    def go_to_previous_commit(self):
+        try:
+            self.repo.git.checkout('HEAD~1')
+        except Exception as e:
+            raise Exception(f"Failed to go to previous commit: {str(e)}")
+        
+    def detach_head(self):
+        try:
+            self.repo.git.checkout('--detach')
+        except Exception as e:
+            raise Exception(f"Failed to detach HEAD: {str(e)}")
