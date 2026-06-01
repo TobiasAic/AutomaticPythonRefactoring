@@ -10,11 +10,11 @@ class RefactoringEvaluator:
     prompt = """
     Your job is to review a refactoring of a piece of Python code based on the diff provided. 
     Your answer must be a JSON object with the following format:
-    {
+    {{
         "description": "A brief description of the refactoring and its impact on code quality.",
         "correct": true/false,
         "grade": 0-10,
-    }
+    }}
 
     The description should be a fitting commit message explaining what was refactored and why.
     The correct field should only be true if the refactoring does not alter the behavior of the code.
