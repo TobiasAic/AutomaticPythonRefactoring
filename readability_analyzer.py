@@ -55,7 +55,7 @@ class ReadabilityAnalyzer:
         self.metrics = dict()
 
     def record_metrics(self, filepath: str):
-        metrics = self.analyze_file(filepath)
+        metrics = ReadabilityAnalyzer.analyze_file(filepath)
         if self.metrics.get(filepath) is None:
             self.metrics[filepath] = []
         self.metrics[filepath].append(metrics)
