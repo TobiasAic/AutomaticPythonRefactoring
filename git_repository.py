@@ -48,3 +48,9 @@ class GitRepository:
             self.repo.git.checkout('--detach')
         except Exception as e:
             raise Exception(f"Failed to detach HEAD: {str(e)}")
+        
+    def switch_branch(self, branch_name: str):
+        try:
+            self.repo.git.checkout(branch_name)
+        except Exception as e:
+            raise Exception(f"Failed to switch to branch '{branch_name}': {str(e)}")
