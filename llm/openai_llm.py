@@ -15,8 +15,6 @@ class OpenAILLM(LLM):
 
     def generate(self, prompt: str) -> str:
         start_time = time.time()
-        logger = logging.getLogger(f"refactoring.{__name__}")
-        logger.debug(f"Sending prompt to OpenAI LLM: {prompt[:100]}...")
         response = self.client.chat.completions.create(
             model=self.model_name,
             messages=[
@@ -25,5 +23,6 @@ class OpenAILLM(LLM):
         )
         elapsed_time = time.time() - start_time
         speed = response.usage.total_tokens / elapsed_time if elapsed_time > 0 else 0
-        logger.debug(f"Received response of length {len(response.choices[0].message.content)} with speed {speed:.2f} tokens/second from OpenAI LLM: {response.choices[0].message.content[:100]}")
+        logger = logging.getLogger(f"refactoring.{__name__}")
+        logger.debug(f"Received response of length {len(response.choices[0].message.content)} with speed {speed:.2f} tokens/second from OpenAI LLM")
         return response.choices[0].message.content
