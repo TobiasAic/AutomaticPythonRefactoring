@@ -68,7 +68,9 @@ class RefactoringSystem:
         metrics_before = self.readability_analyzer.metrics[filepath.absolute()][-2]
         metrics_after = self.readability_analyzer.metrics[filepath.absolute()][-1]
 
-        if metrics_before.maintainability_index <= metrics_after.maintainability_index:
+        minimum_improvement = -0.05
+        improvement_percentage = (metrics_after.maintainability_index - metrics_before.maintainability_index) / metrics_before.maintainability_index
+        if improvement_percentage >= minimum_improvement:
             return True
         else:
             return False
