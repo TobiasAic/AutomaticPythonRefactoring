@@ -33,4 +33,4 @@ class OpenAILLM(LLM):
         generation_speed = (reasoning_tokens + answer_tokens) / response_time if response_time > 0 else 0
 
         logger = logging.getLogger(f"refactoring.{__name__}")
-        logger.debug(f"{type(self).__name__}: prompt_tokens={prompt_tokens}, reasoning_tokens={reasoning_tokens}, answer_tokens={answer_tokens}, generation_speed={generation_speed:.2f} tokens/second")
+        logger.debug(f"{type(self).__name__}: prompt_tokens={prompt_tokens}, reasoning_tokens={reasoning_tokens}, answer_tokens={answer_tokens}, time={response_time:.2f}, generation_speed={generation_speed:.2f} tokens/second")
