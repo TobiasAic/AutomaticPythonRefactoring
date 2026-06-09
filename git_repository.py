@@ -67,3 +67,11 @@ class GitRepository:
             self.repo.git.checkout(commit_hash)
         except Exception as e:
             raise Exception(f"Failed to checkout commit '{commit_hash}': {str(e)}")
+        
+    def get_current_branch(self) -> str:
+        try:
+            return self.repo.active_branch.name
+        except TypeError: # happens when HEAD is detached
+            return None
+        except Exception as e:
+            raise Exception(f"Failed to get current branch: {str(e)}")

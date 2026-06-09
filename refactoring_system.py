@@ -19,8 +19,8 @@ class RefactoringSystem:
 
     def run(self):
         self.git_repository.create_branch(self.config.branch_name)
-        
-
+        logger = logging.getLogger(f"refactoring.{__name__}")
+        logger.debug(f"Created and switched to branch '{self.git_repository.get_current_branch()}' for refactoring process")
 
         for filepath in self.config.get_absolute_file_paths():
             self.refactor_file(filepath)
