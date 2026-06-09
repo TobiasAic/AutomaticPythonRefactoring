@@ -22,7 +22,15 @@ class OpenAILLM(LLM):
             ]
         )
         elapsed_time = time.time() - start_time
-        speed = response.usage.total_tokens / elapsed_time if elapsed_time > 0 else 0
-        logger = logging.getLogger(f"refactoring.{__name__}")
-        logger.debug(f"Received response of length {len(response.choices[0].message.content)} with speed {speed:.2f} tokens/second from OpenAI LLM")
+        self.log_response_stats(elapsed_time, response)
         return response.choices[0].message.content
+    
+    def log_response_stats(self, response_time, response):
+        prompt_tokens = response.usage.prompt_tokens
+        reasoning_tokens = response.usage.completion_tokens_details.reasoning_tokens
+        answer_tokens = response.usage.completion_tokens - reasoning_tokens
+
+        generation_speed = (reasoning_tokens + answer_tokens) / response_time if response_time > 0 else 0
+
+        logger = logging.getLogger(f"refactoring.{__name__}")
+        logger.debug(f"{type(self).__name__}: prompt_tokens={prompt_tokens}, reasoning_tokens={reasoning_tokens}, answer_tokens={answer_tokens}, generation_speed={generation_speed:.2f} tokens/second")
