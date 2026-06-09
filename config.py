@@ -1,0 +1,46 @@
+from dataclasses import dataclass
+import tomllib
+import os
+
+@dataclass
+class Config():
+    root_path: str
+    target_file_paths: list[str] 
+    git_repo_path: str
+    branch_name: str
+    pyenv_name: str
+    pytest_command: str
+    max_iterations: int = None
+
+    def __str__(self):
+        return (
+            f"Config(\n"
+            f"  root_path='{self.root_path}',\n"
+            f"  target_file_paths={self.target_file_paths},\n"
+            f"  git_repo_path='{self.git_repo_path}',\n"
+            f"  branch_name='{self.branch_name}',\n"
+            f"  pyenv_name='{self.pyenv_name}',\n"
+            f"  pytest_command='{self.pytest_command}',\n"
+            f"  max_iterations={self.max_iterations}\n"
+            f")"
+        )
+    
+    def get_absolute_file_paths(self) -> list[str]:
+        return [os.path.join(self.root_path, path) for path in self.target_file_paths]
+    
+    def get_absolute_git_repo_path(self) -> str:
+        return os.path.join(self.root_path, self.git_repo_path)
+
+def load_from_toml(file_path: str) -> "Config":
+    with open(file_path, "rb") as f:
+        data = tomllib.load(f)
+    
+    return Config(
+        root_path=os.path.dirname(file_path),
+        target_file_paths=data["target_file_paths"],
+        git_repo_path=data["git_repo_path"],
+        branch_name=data["branch_name"],
+        pyenv_name=data["pyenv_name"],
+        pytest_command=data["pytest_command"],
+        max_iterations=data["max_iterations"]
+    )
