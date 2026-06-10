@@ -2,10 +2,7 @@ from openai import OpenAI
 import logging
 import time
 
-from llm.llm import LLM
-
-
-class OpenAILLM(LLM):
+class OpenAILLM():
     def __init__(self, api_key, base_url, model_name):
         self.model_name = model_name
         self.client = OpenAI(

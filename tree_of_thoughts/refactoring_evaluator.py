@@ -4,7 +4,7 @@ import logging
 
 from refactoring.refactoring import Refactoring
 from refactoring.refactoring_evaluation import RefactoringEvaluation
-from llm.llm import LLM
+from llm.openai_llm import OpenAILLM
 
 class RefactoringEvaluator:
     prompt = """
@@ -24,7 +24,7 @@ class RefactoringEvaluator:
     {diff}
     """
 
-    def __init__(self, llm: LLM):
+    def __init__(self, llm: OpenAILLM):
         self.llm = llm
 
     def evaluate(self, refactoring: Refactoring) -> Optional[RefactoringEvaluation]:
