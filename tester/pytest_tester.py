@@ -1,4 +1,4 @@
-from tester.tester import Tester, TestResults
+from tester.tester import Tester
 import os
 import subprocess
 from pytest import ExitCode
@@ -14,14 +14,14 @@ class PytestTester(Tester):
         self.initial_test_results = self.extract_test_results(pytest_output)
         return pytest_output.splitlines()[-1] # return the summary line of the pytest output
 
-    def test_changed(self) -> TestResults:
+    def test_changed(self) -> bool:
         pytest_output = self.run_pytest()
         changed_test_results = self.extract_test_results(pytest_output)
 
         if self.compare_to_initial_results(changed_test_results):
-            return TestResults.UNCHANGED
+            return False
         else:
-            return TestResults.CHANGED
+            return True 
 
     def run_pytest(self) -> str:
         env = os.environ.copy()
