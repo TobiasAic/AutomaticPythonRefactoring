@@ -9,7 +9,7 @@ class Config():
     git_repo_path: str
     branch_name: str
     pyenv_name: str
-    pytest_command: str
+    test_root_path: str
     max_iterations: int = None
 
     def __str__(self):
@@ -20,7 +20,7 @@ class Config():
             f"  git_repo_path='{self.git_repo_path}',\n"
             f"  branch_name='{self.branch_name}',\n"
             f"  pyenv_name='{self.pyenv_name}',\n"
-            f"  pytest_command='{self.pytest_command}',\n"
+            f"  test_root_path='{self.test_root_path}',\n"
             f"  max_iterations={self.max_iterations}\n"
             f")"
         )
@@ -30,6 +30,9 @@ class Config():
     
     def get_absolute_git_repo_path(self) -> str:
         return os.path.join(self.root_path, self.git_repo_path)
+    
+    def get_absolute_test_root_path(self) -> str:
+        return os.path.join(self.root_path, self.test_root_path)
 
 def load_from_toml(file_path: str) -> "Config":
     with open(file_path, "rb") as f:
@@ -41,6 +44,6 @@ def load_from_toml(file_path: str) -> "Config":
         git_repo_path=data["git_repo_path"],
         branch_name=data["branch_name"],
         pyenv_name=data["pyenv_name"],
-        pytest_command=data["pytest_command"],
+        test_root_path=data["test_root_path"],
         max_iterations=data["max_iterations"]
     )

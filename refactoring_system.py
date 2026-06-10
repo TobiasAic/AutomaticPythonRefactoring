@@ -7,6 +7,8 @@ from tree_of_thoughts.refactoring_generator import RefactoringGenerator
 from tree_of_thoughts.refactoring_evaluator import RefactoringEvaluator
 from readability_analyzer import ReadabilityAnalyzer
 from config import Config
+from compiler import Compiler
+from tester.pytest_tester import PytestTester
 
 class RefactoringSystem:
     def __init__(self, config: Config):
@@ -16,6 +18,7 @@ class RefactoringSystem:
         self.refactoring_generator = RefactoringGenerator(BigPickle())
         self.refactoring_evaluator = RefactoringEvaluator(BigPickle())
         self.readability_analyzer = ReadabilityAnalyzer()
+        self.tester = PytestTester(project_root=Path(config.get_absolute_test_root_path()), pyenv_name=config.pyenv_name)
 
     def run(self):
         self.git_repository.create_branch(self.config.branch_name)
@@ -26,6 +29,7 @@ class RefactoringSystem:
             self.refactor_file(filepath)
 
     def refactor_file(self, filepath: str):
+        self.tester.test_before() # Run tests before starting the refactoring process to establish a baseline
         self.readability_analyzer.record_metrics(filepath)
         logger = logging.getLogger(f"refactoring.{__name__}")
         logger.info(f"Starting refactoring process for {Path(filepath).name}. Initial Maintainability Index: {self.readability_analyzer.metrics[filepath][0].maintainability_index}")
@@ -54,7 +58,12 @@ class RefactoringSystem:
             if ranked_refactorings[0].evaluation and ranked_refactorings[0].evaluation.correct:
                 best_refactoring = ranked_refactorings[0]
                 self.git_repository.checkout_commit(best_refactoring.commit_hash)
-                self.git_repository.move_branch(self.config.branch_name)
+                if self.validate_refactoring(filepath):
+                    logger.info(f"Applied refactoring with evaluation: {best_refactoring.evaluation.description} (Correct: {best_refactoring.evaluation.correct}, Grade: {best_refactoring.evaluation.grade})")
+                    self.git_repository.move_branch(self.config.branch_name)
+                else:
+                    logger.info(f"Refactoring with evaluation '{best_refactoring.evaluation.description}' failed validation. Reverting to previous state.")
+                    self.git_repository.go_to_previous_commit()
 
             self.readability_analyzer.record_metrics(filepath)
             logger.info(f"Analyzed readability metrics for {Path(filepath).name}: MI = {self.readability_analyzer.metrics[filepath][0].maintainability_index}")
@@ -77,3 +86,12 @@ class RefactoringSystem:
             return True
         else:
             return False
+        
+    def validate_refactoring(self, filepath: str) -> bool:
+        if not Compiler.try_compile_file(filepath):
+            return False
+        
+        if self.tester.test_changed():
+            return False
+        
+        return True
