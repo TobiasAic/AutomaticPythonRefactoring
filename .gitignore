@@ -31,3 +31,6 @@ venv/
 /.cache/
 
 .env
+
+# Rope project files
+.ropeproject/
