@@ -1,8 +1,11 @@
 from typing import List
 import logging
+from openai.types.chat import ChatCompletionMessageFunctionToolCall 
+import json
 
 from refactoring.refactoring import Refactoring
 from refactoring.free_edit_refactoring import FreeEditRefactoring
+from refactoring.rename_refactoring import RenameRefactoringTool
 
 class RefactoringGenerator:
     prompt = """
@@ -29,28 +32,54 @@ class RefactoringGenerator:
     Do not apply multiple refactorings at once, only one of the size of a regular commit.
     The code you return needs to be complete and have the same functionality as the original code.
 
+    You also have tools for refactoring available. You should use the tools if they are applicable to what you want to do.
+
     {code_segment}
     """
 
     def __init__(self, llm):
         self.llm = llm
 
-    def generate_refactorings(self, code_segment: str, count: int) -> List[Refactoring]:
-        prompt = self.prompt.format(code_segment=code_segment)
+    def generate_refactorings(self, code_segment: str, count: int, filepath: str) -> List[Refactoring]:
+        prompt = self.prompt.format(code_segment=self.add_line_numbers(code_segment))
 
         refactorings = []
         for i in range(count):
             response = self.llm.generate(prompt)
-            try:
-                refactored_code = self.extract_python_code(response)
-            except ValueError as e:
-                logger = logging.getLogger(f"refactoring.{__name__}")
-                logger.debug(f"Failed to extract Python code from LLM response: {response}")
-                continue
-            refactoring = FreeEditRefactoring(code_segment, refactored_code)
-            refactorings.append(refactoring)
+
+            if type(response) == str:
+                refactoring = self.handle_string_response(response, code_segment, filepath)
+            elif type(response) == ChatCompletionMessageFunctionToolCall:
+                refactoring = self.handle_tool_call_response(response, filepath)
+            else:
+                raise ValueError(f"Unexpected response type from LLM: {type(response)}. Response content: {response}")
+
+            if refactoring:
+                refactorings.append(refactoring)
 
         return refactorings
+    
+    def handle_string_response(self, response: str, code_segment: str, filepath: str) -> str:
+        try:
+            refactored_code = self.extract_python_code(response)
+        except ValueError as e:
+            logger = logging.getLogger(f"refactoring.{__name__}")
+            logger.debug(f"Failed to extract Python code from LLM response: {response}")
+            return None
+        return FreeEditRefactoring(filepath, code_segment, refactored_code)
+    
+    def handle_tool_call_response(self, tool_call: ChatCompletionMessageFunctionToolCall, filepath: str) -> Refactoring:
+        logger = logging.getLogger(f"refactoring.{__name__}")
+        arguments = json.loads(tool_call.function.arguments)
+        if tool_call.function.name == "rename_refactoring":
+            logger.debug(f"Received tool call for 'rename_refactoring' with arguments: {arguments}")
+            line_number = int(arguments.get("line_number"))
+            old_name = arguments.get("old_name")
+            new_name = arguments.get("new_name")
+            return RenameRefactoringTool.call(filepath=filepath, line_number=line_number, old_name=old_name, new_name=new_name)
+        else:
+            logger.debug(f"Received tool call for unknown tool '{tool_call.function.name}'. Response content: {tool_call}")
+            return None
     
     def extract_python_code(self, text: str) -> str:
         start_marker = "```python"
@@ -66,3 +95,8 @@ class RefactoringGenerator:
         python_code = text[start_index:end_index].strip()
 
         return python_code
+    
+    def add_line_numbers(self, code: str) -> str:
+        lines = code.split("\n")
+        numbered_lines = [f"{i+1}: {line}" for i, line in enumerate(lines)]
+        return "\n".join(numbered_lines)

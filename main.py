@@ -4,7 +4,6 @@ import logging
 
 from config import load_from_toml
 from refactoring_system import RefactoringSystem
-from utility.path_utils import get_filepaths_to_refactor, get_test_filepaths, find_lowest_common_ancestor_path
 from logging_setup import setup_logging
 
 

@@ -3,8 +3,8 @@ import difflib
 from refactoring.refactoring import Refactoring
 
 class FreeEditRefactoring(Refactoring):
-    def __init__(self, old_code: str, new_code: str):
-        super().__init__()
+    def __init__(self, filepath: str, old_code: str, new_code: str):
+        super().__init__(filepath)
         self.old_code = old_code
         self.new_code = new_code
 
@@ -18,6 +18,6 @@ class FreeEditRefactoring(Refactoring):
         )
         return '\n'.join(diff)
 
-    def execute(self, filepath: str) -> None:
-        with open(filepath, 'w') as file:
+    def execute(self) -> None:
+        with open(self.filepath, 'w') as file:
             file.write(self.new_code)

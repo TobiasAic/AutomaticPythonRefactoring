@@ -1,9 +1,10 @@
 from refactoring.refactoring_evaluation import RefactoringEvaluation 
 
 class Refactoring:
-    def __init__(self):
+    def __init__(self, filepath: str):
         self.evaluation = None
         self.commit_hash: str = None
+        self.filepath = filepath
 
     def get_diff(self) -> str:
         pass

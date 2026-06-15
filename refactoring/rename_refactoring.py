@@ -7,7 +7,7 @@ from rope.refactor.rename import Rename
 
 class RenameRefactoring(Refactoring):
     def __init__(self, filepath: str, offset: int, new_name: str):
-        super().__init__()
+        super().__init__(filepath)
 
         self.project = Project(os.path.dirname(filepath))
         self.resource = libutils.path_to_resource(self.project, filepath)
@@ -25,3 +25,48 @@ class RenameRefactoring(Refactoring):
 
     def __del__(self):
         self.project.close()
+
+class RenameRefactoringTool:
+    @staticmethod
+    def get_description() -> dict:
+        return {
+        "type": "function",
+        "function": {
+            "name": "rename_refactoring",
+            "description": "Rename a local variable or attribute of a class.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "line_number": {
+                        "type": "integer",
+                        "description": "The line number of the code containing the identifier to rename. For example: 42."
+                    },
+                    "old_name": {
+                        "type": "string",
+                        "description": "The current name of the identifier to rename. For example: 'user'."
+                    },
+                    "new_name": {
+                        "type": "string",
+                        "description": "The new name for the identifier. For example: 'customer'."
+                    }
+                },
+                "required": ["line_number", "old_name", "new_name"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+    def call(filepath: str, line_number: int, old_name: str, new_name: str) -> RenameRefactoring:
+        offset = calculate_offset(filepath, line_number, old_name)
+        return RenameRefactoring(filepath, offset, new_name)
+
+def calculate_offset(filepath: str, line_number: int, identifier: str) -> int:
+    with open(filepath, "r") as f:
+        lines = f.readlines()
+
+    offset = 0
+    for i in range(line_number - 1):
+        offset += len(lines[i])
+
+    offset += lines[line_number - 1].index(identifier)
+    return offset
