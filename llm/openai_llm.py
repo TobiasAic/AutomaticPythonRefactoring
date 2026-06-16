@@ -10,6 +10,18 @@ class OpenAILLMConfig:
     base_url: str
     model_name: str
 
+@dataclass
+class LLMResponse:
+    """Represents a response from the LLM, including the generated content and any tool calls."""
+    text: str | None = None
+    tool_call: ToolCall | None = None
+
+@dataclass
+class ToolCall:
+    """Represents a tool call made by the LLM."""
+    name: str
+    arguments: dict
+
 class OpenAILLM():
     def __init__(self, config: OpenAILLMConfig, tools: list[dict] = []):
         self.model_name = config.model_name
@@ -19,7 +31,7 @@ class OpenAILLM():
         )
         self.tools = tools
 
-    def generate(self, prompt: str) -> str | ChatCompletionMessageFunctionToolCall:
+    def generate(self, prompt: str) -> LLMResponse:
         start_time = time.time()
 
         # This is the old API, because some models (like big-pickle) do not support the new one
@@ -37,10 +49,19 @@ class OpenAILLM():
 
         
         if response.choices[0].finish_reason == "tool_calls":
-            return response.choices[0].message.tool_calls[0]
+            return LLMResponse(
+                text=None,
+                tool_call=ToolCall(
+                    name=response.choices[0].message.tool_calls[0].tool_name,
+                    arguments=response.choices[0].message.tool_calls[0].arguments
+                )
+            )
 
-        return response.choices[0].message.content
-    
+        return LLMResponse(
+            text=response.choices[0].message.content,
+            tool_call=None
+        )
+
     def log_response_stats(self, response_time, response):
         prompt_tokens = response.usage.prompt_tokens
         reasoning_tokens = response.usage.completion_tokens_details.reasoning_tokens if response.usage.completion_tokens_details else None 

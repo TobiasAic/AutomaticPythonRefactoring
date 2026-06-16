@@ -5,6 +5,7 @@ import logging
 from refactoring.refactoring import Refactoring
 from refactoring.refactoring_evaluation import RefactoringEvaluation
 from llm.openai_llm import OpenAILLM
+from llm.openai_llm import LLMResponse
 
 class RefactoringEvaluator:
     prompt = """
@@ -39,9 +40,11 @@ class RefactoringEvaluator:
             logger.error(f"LLM did not return a valid evaluation: {response}")
             return None
 
-    def extract_evaluation(self, llm_response: str) -> RefactoringEvaluation:
+    def extract_evaluation(self, llm_response: LLMResponse) -> RefactoringEvaluation:
         try:
-            data = json.loads(llm_response)
+            if llm_response.text is None:
+                raise ValueError("LLM response does not contain text content.")
+            data = json.loads(llm_response.text)
         except json.JSONDecodeError:
             raise ValueError("LLM response is not a valid JSON object.")
 
