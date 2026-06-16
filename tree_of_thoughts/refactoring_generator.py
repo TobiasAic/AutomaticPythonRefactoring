@@ -64,7 +64,7 @@ class RefactoringGenerator:
 
         return refactorings
     
-    def handle_string_response(self, response: str, code_segment: str, filepath: str) -> str:
+    def handle_string_response(self, response: str, code_segment: str, filepath: str) -> str|None:
         try:
             refactored_code = self.extract_python_code(response)
         except ValueError as e:
@@ -73,7 +73,7 @@ class RefactoringGenerator:
             return None
         return FreeEditRefactoring(filepath, code_segment, refactored_code)
     
-    def handle_tool_call_response(self, tool_call: ChatCompletionMessageFunctionToolCall, filepath: str) -> Refactoring:
+    def handle_tool_call_response(self, tool_call: ChatCompletionMessageFunctionToolCall, filepath: str) -> Refactoring|None:
         logger = logging.getLogger(f"refactoring.{__name__}")
         arguments = json.loads(tool_call.function.arguments)
         if tool_call.function.name == "rename_refactoring":

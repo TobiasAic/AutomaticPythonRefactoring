@@ -1,4 +1,5 @@
 import os
+import logging
 
 from refactoring.refactoring import Refactoring
 from rope.base.project import Project
@@ -9,11 +10,16 @@ class RenameRefactoring(Refactoring):
     def __init__(self, filepath: str, offset: int, new_name: str):
         super().__init__(filepath)
 
-        # ropefolder=None stops rope from creating a .ropeproject folder, which helps to keep the project directory clean
-        self.project = Project(os.path.dirname(filepath), ropefolder=None)
-        self.resource = libutils.path_to_resource(self.project, filepath)
-        self.rename = Rename(self.project, self.resource, offset)
-        self.changes = self.rename.get_changes(new_name)
+        try:
+            # ropefolder=None stops rope from creating a .ropeproject folder, which helps to keep the project directory clean
+            self.project = Project(os.path.dirname(filepath), ropefolder=None)
+            self.resource = libutils.path_to_resource(self.project, filepath)
+            self.rename = Rename(self.project, self.resource, offset)
+            self.changes = self.rename.get_changes(new_name)
+        except Exception as e:
+            logger = logging.getLogger(f"refactoring.{__name__}")
+            logger.error(f"Failed to initialize RenameRefactoring for file {filepath} with offset {offset}. Error: {e}")
+            return None
 
     def get_diff(self) -> str:
        return self.changes.get_description()

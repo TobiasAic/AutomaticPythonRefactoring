@@ -2,18 +2,24 @@ from rope.base.project import Project
 from rope.base import libutils
 from rope.refactor.extract import ExtractMethod
 import os
+import logging
 
 from refactoring.refactoring import Refactoring
 
 class ExtractMethodRefactoring(Refactoring):
     def __init__(self, filepath: str, start_offset: int, end_offset: int, new_method_name: str):
         super().__init__(filepath)
-        
-        # ropefolder=None stops rope from creating a .ropeproject folder, which helps to keep the project directory clean
-        self.project = Project(os.path.dirname(filepath), ropefolder=None)
-        self.resource = libutils.path_to_resource(self.project, filepath)
-        self.extract_method = ExtractMethod(self.project, self.resource, start_offset=start_offset, end_offset=end_offset)
-        self.changes = self.extract_method.get_changes(new_method_name)
+
+        try: 
+            # ropefolder=None stops rope from creating a .ropeproject folder, which helps to keep the project directory clean
+            self.project = Project(os.path.dirname(filepath), ropefolder=None)
+            self.resource = libutils.path_to_resource(self.project, filepath)
+            self.extract_method = ExtractMethod(self.project, self.resource, start_offset=start_offset, end_offset=end_offset)
+            self.changes = self.extract_method.get_changes(new_method_name)
+        except Exception as e:
+            logger = logging.getLogger(f"refactoring.{__name__}")
+            logger.error(f"Failed to initialize ExtractMethodRefactoring for file {filepath} with start offset {start_offset} and end offset {end_offset}. Error: {e}")
+            return None
 
     def get_diff(self) -> str:
        return self.changes.get_description()
