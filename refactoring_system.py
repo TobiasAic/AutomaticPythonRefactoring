@@ -70,7 +70,7 @@ class RefactoringSystem:
             logger.info(f"Analyzed readability metrics for {Path(filepath).name}: MI = {self.readability_analyzer.metrics[filepath][0].maintainability_index}")
 
             iteration += 1
-            if self.config.max_iterations is not None and iteration > self.config.max_iterations:
+            if self.config.max_iterations is not None and iteration >= self.config.max_iterations:
                 logger.info(f"Reached maximum iterations ({self.config.max_iterations}) for {Path(filepath).name}. Stopping refactoring process for this file.")
                 break
 
