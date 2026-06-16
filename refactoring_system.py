@@ -33,7 +33,7 @@ class RefactoringSystem:
         self.tester.test_before() # Run tests before starting the refactoring process to establish a baseline
         self.readability_analyzer.record_metrics(filepath)
         logger = logging.getLogger(f"refactoring.{__name__}")
-        logger.info(f"Starting refactoring process for {Path(filepath).name}. Initial Maintainability Index: {self.readability_analyzer.metrics[filepath][0].maintainability_index}")
+        logger.info(f"Starting refactoring process for {Path(filepath).name}. Initial Maintainability Index: {self.readability_analyzer.metrics[filepath][-1].maintainability_index}")
 
         iteration = 0
 
@@ -67,7 +67,7 @@ class RefactoringSystem:
                     self.git_repository.go_to_previous_commit()
 
             self.readability_analyzer.record_metrics(filepath)
-            logger.info(f"Analyzed readability metrics for {Path(filepath).name}: MI = {self.readability_analyzer.metrics[filepath][0].maintainability_index}")
+            logger.info(f"Analyzed readability metrics for {Path(filepath).name}: MI = {self.readability_analyzer.metrics[filepath][-1].maintainability_index}")
 
             iteration += 1
             if self.config.max_iterations is not None and iteration >= self.config.max_iterations:
