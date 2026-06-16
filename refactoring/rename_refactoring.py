@@ -33,13 +33,13 @@ class RenameRefactoring(Refactoring):
     def __del__(self):
         self.project.close()
 
-class RenameRefactoringTool:
+class RenameTool:
     @staticmethod
     def get_description() -> dict:
         return {
         "type": "function",
         "function": {
-            "name": "rename_refactoring",
+            "name": "rename",
             "description": "Rename a local variable or attribute of a class.",
             "parameters": {
                 "type": "object",

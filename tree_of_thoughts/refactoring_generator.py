@@ -5,7 +5,7 @@ import json
 
 from refactoring.refactoring import Refactoring
 from refactoring.free_edit_refactoring import FreeEditRefactoring
-from refactoring.rename_refactoring import RenameRefactoringTool
+from refactoring.rename_refactoring import RenameTool
 from refactoring.extract_method_refactoring import ExtractMethodTool
 
 class RefactoringGenerator:
@@ -76,12 +76,12 @@ class RefactoringGenerator:
     def handle_tool_call_response(self, tool_call: ChatCompletionMessageFunctionToolCall, filepath: str) -> Refactoring|None:
         logger = logging.getLogger(f"refactoring.{__name__}")
         arguments = json.loads(tool_call.function.arguments)
-        if tool_call.function.name == "rename_refactoring":
-            logger.debug(f"Received tool call for 'rename_refactoring' with arguments: {arguments}")
+        if tool_call.function.name == "rename":
+            logger.debug(f"Received tool call for 'rename' with arguments: {arguments}")
             line_number = int(arguments.get("line_number"))
             old_name = arguments.get("old_name")
             new_name = arguments.get("new_name")
-            return RenameRefactoringTool.call(filepath=filepath, line_number=line_number, old_name=old_name, new_name=new_name)
+            return RenameTool.call(filepath=filepath, line_number=line_number, old_name=old_name, new_name=new_name)
         if tool_call.function.name == "extract_method":
             logger.debug(f"Received tool call for 'extract_method' with arguments: {arguments}")
             start_line = int(arguments.get("start_line"))
