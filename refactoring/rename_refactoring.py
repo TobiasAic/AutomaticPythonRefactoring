@@ -9,7 +9,8 @@ class RenameRefactoring(Refactoring):
     def __init__(self, filepath: str, offset: int, new_name: str):
         super().__init__(filepath)
 
-        self.project = Project(os.path.dirname(filepath))
+        # ropefolder=None stops rope from creating a .ropeproject folder, which helps to keep the project directory clean
+        self.project = Project(os.path.dirname(filepath), ropefolder=None)
         self.resource = libutils.path_to_resource(self.project, filepath)
         self.rename = Rename(self.project, self.resource, offset)
         self.changes = self.rename.get_changes(new_name)
