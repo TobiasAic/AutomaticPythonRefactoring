@@ -1,4 +1,8 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
+import json
+from typing import Any
 
 @dataclass
 class OpenAILLMConfig:
@@ -12,8 +16,41 @@ class LLMResponse:
     text: str | None = None
     tool_call: ToolCall | None = None
 
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "text": self.text,
+            "tool_call": self.tool_call.to_dict() if self.tool_call else None,
+        }
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict())
+
+    @staticmethod
+    def from_dict(data: dict[str, Any]) -> "LLMResponse":
+        return LLMResponse(
+            text=data.get("text"),
+            tool_call=ToolCall.from_dict(data["tool_call"]) if data.get("tool_call") else None,
+        )
+
+    @staticmethod
+    def from_json(data: str) -> "LLMResponse":
+        return LLMResponse.from_dict(json.loads(data))
+
 @dataclass
 class ToolCall:
     """Represents a tool call made by the LLM."""
     name: str
     arguments: dict
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "arguments": self.arguments,
+        }
+
+    @staticmethod
+    def from_dict(data: dict[str, Any]) -> "ToolCall":
+        return ToolCall(
+            name=data["name"],
+            arguments=data["arguments"],
+        )
