@@ -64,9 +64,14 @@ class ExtractMethodTool:
     }
 
     def call(filepath: str, start_line: int, end_line: int, new_name: str) -> ExtractMethodRefactoring:
-        start_offset = calculate_offset_for_line(filepath, start_line)
-        end_offset = calculate_offset_for_line(filepath, end_line, include_line=True)
-        return ExtractMethodRefactoring(filepath=filepath, start_offset=start_offset, end_offset=end_offset, new_method_name=new_name)
+        try:
+            start_offset = calculate_offset_for_line(filepath, start_line)
+            end_offset = calculate_offset_for_line(filepath, end_line, include_line=True)
+            return ExtractMethodRefactoring(filepath=filepath, start_offset=start_offset, end_offset=end_offset, new_method_name=new_name)
+        except Exception as e:
+            logger = logging.getLogger(f"refactoring.{__name__}")
+            logger.error(f"Failed to create ExtractMethodRefactoring for file {filepath} from line {start_line} to line {end_line} with new method name '{new_name}'. Error: {e}")
+            return None
 
 def calculate_offset_for_line(filepath: str, line_number: int, include_line: bool = False) -> int:
     with open(filepath, "r") as file:

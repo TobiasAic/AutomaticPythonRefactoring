@@ -64,8 +64,13 @@ class RenameRefactoringTool:
     }
 
     def call(filepath: str, line_number: int, old_name: str, new_name: str) -> RenameRefactoring:
-        offset = calculate_offset(filepath, line_number, old_name)
-        return RenameRefactoring(filepath, offset, new_name)
+        try:
+            offset = calculate_offset(filepath, line_number, old_name)
+            return RenameRefactoring(filepath, offset, new_name)
+        except Exception as e:
+            logger = logging.getLogger(f"refactoring.{__name__}")
+            logger.error(f"Failed to create RenameRefactoring for file {filepath} at line {line_number} renaming '{old_name}' to '{new_name}'. Error: {e}")
+            return None
 
 def calculate_offset(filepath: str, line_number: int, identifier: str) -> int:
     with open(filepath, "r") as f:
