@@ -1,26 +1,8 @@
 from openai import OpenAI
-from openai.types.chat import ChatCompletionMessageFunctionToolCall 
 import logging
 import time
-from dataclasses import dataclass
 
-@dataclass
-class OpenAILLMConfig:
-    api_key: str
-    base_url: str
-    model_name: str
-
-@dataclass
-class LLMResponse:
-    """Represents a response from the LLM, including the generated content and any tool calls."""
-    text: str | None = None
-    tool_call: ToolCall | None = None
-
-@dataclass
-class ToolCall:
-    """Represents a tool call made by the LLM."""
-    name: str
-    arguments: dict
+from llm.llm_types import OpenAILLMConfig, LLMResponse, ToolCall
 
 class OpenAILLM():
     def __init__(self, config: OpenAILLMConfig, tools: list[dict] = []):

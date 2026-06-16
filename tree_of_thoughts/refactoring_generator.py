@@ -7,7 +7,7 @@ from refactoring.refactoring import Refactoring
 from refactoring.free_edit_refactoring import FreeEditRefactoring
 from refactoring.rename_refactoring import RenameTool
 from refactoring.extract_method_refactoring import ExtractMethodTool
-from llm.openai_llm import ToolCall
+from llm.llm_types import ToolCall
 
 class RefactoringGenerator:
     prompt = """

@@ -5,7 +5,7 @@ import logging
 from refactoring.refactoring import Refactoring
 from refactoring.refactoring_evaluation import RefactoringEvaluation
 from llm.openai_llm import OpenAILLM
-from llm.openai_llm import LLMResponse
+from llm.llm_types import LLMResponse
 
 class RefactoringEvaluator:
     prompt = """
