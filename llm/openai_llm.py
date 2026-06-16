@@ -2,13 +2,20 @@ from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageFunctionToolCall 
 import logging
 import time
+from dataclasses import dataclass
+
+@dataclass
+class OpenAILLMConfig:
+    api_key: str
+    base_url: str
+    model_name: str
 
 class OpenAILLM():
-    def __init__(self, api_key, base_url, model_name, tools=[]):
-        self.model_name = model_name
+    def __init__(self, config: OpenAILLMConfig, tools: list[dict] = []):
+        self.model_name = config.model_name
         self.client = OpenAI(
-            api_key=api_key,
-            base_url=base_url,
+            api_key=config.api_key,
+            base_url=config.base_url,
         )
         self.tools = tools
 
