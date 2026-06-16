@@ -4,6 +4,7 @@ import logging
 from git_repository import GitRepository
 from llm.big_pickle import BigPickle
 from refactoring.rename_refactoring import RenameRefactoringTool
+from refactoring.extract_method_refactoring import ExtractMethodTool
 from tree_of_thoughts.refactoring_generator import RefactoringGenerator 
 from tree_of_thoughts.refactoring_evaluator import RefactoringEvaluator
 from readability_analyzer import ReadabilityAnalyzer
@@ -16,7 +17,7 @@ class RefactoringSystem:
         self.config = config
 
         self.git_repository = GitRepository(config.get_absolute_git_repo_path())
-        self.refactoring_generator = RefactoringGenerator(BigPickle(tools=[RenameRefactoringTool.get_description()]))
+        self.refactoring_generator = RefactoringGenerator(BigPickle(tools=[RenameRefactoringTool.get_description(), ExtractMethodTool.get_description()]))
         self.refactoring_evaluator = RefactoringEvaluator(BigPickle())
         self.readability_analyzer = ReadabilityAnalyzer()
         self.tester = PytestTester(project_root=Path(config.get_absolute_test_root_path()), pyenv_name=config.pyenv_name)

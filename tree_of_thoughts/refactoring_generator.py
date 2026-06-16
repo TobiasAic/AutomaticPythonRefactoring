@@ -6,6 +6,7 @@ import json
 from refactoring.refactoring import Refactoring
 from refactoring.free_edit_refactoring import FreeEditRefactoring
 from refactoring.rename_refactoring import RenameRefactoringTool
+from refactoring.extract_method_refactoring import ExtractMethodTool
 
 class RefactoringGenerator:
     prompt = """
@@ -81,6 +82,12 @@ class RefactoringGenerator:
             old_name = arguments.get("old_name")
             new_name = arguments.get("new_name")
             return RenameRefactoringTool.call(filepath=filepath, line_number=line_number, old_name=old_name, new_name=new_name)
+        if tool_call.function.name == "extract_method":
+            logger.debug(f"Received tool call for 'extract_method' with arguments: {arguments}")
+            start_line = int(arguments.get("start_line"))
+            end_line = int(arguments.get("end_line"))
+            new_name = arguments.get("new_name")
+            return ExtractMethodTool.call(filepath=filepath, start_line=start_line, end_line=end_line, new_name=new_name) 
         else:
             logger.debug(f"Received tool call for unknown tool '{tool_call.function.name}'. Response content: {tool_call}")
             return None
