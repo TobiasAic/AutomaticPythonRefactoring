@@ -8,7 +8,7 @@ big_pickle_config = OpenAILLMConfig(
 )
 
 qwen3_5_2b_config = OpenAILLMConfig(
-    "supersecret", # dummy value, Ollama does not require an API key
+    api_key="supersecret", # dummy value, Ollama does not require an API key
     base_url="http://localhost:11434/v1",
     model_name="qwen3.5:2b"
 )
