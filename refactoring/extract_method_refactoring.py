@@ -59,11 +59,12 @@ class ExtractMethodTool:
 
     def call(filepath: str, start_line: int, end_line: int, new_name: str) -> ExtractMethodRefactoring:
         start_offset = calculate_offset_for_line(filepath, start_line)
-        end_offset = calculate_offset_for_line(filepath, end_line)
+        end_offset = calculate_offset_for_line(filepath, end_line, include_line=True)
         return ExtractMethodRefactoring(filepath=filepath, start_offset=start_offset, end_offset=end_offset, new_method_name=new_name)
 
-def calculate_offset_for_line(filepath: str, line_number: int) -> int:
+def calculate_offset_for_line(filepath: str, line_number: int, include_line: bool = False) -> int:
     with open(filepath, "r") as file:
         lines = file.readlines()
-    offset = sum(len(line) for line in lines[:line_number - 1])
+    last_included_line = line_number if include_line else line_number - 1
+    offset = sum(len(line) for line in lines[:last_included_line])
     return offset
