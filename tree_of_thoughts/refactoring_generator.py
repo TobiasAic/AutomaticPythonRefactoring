@@ -9,7 +9,7 @@ from refactoring.rename_refactoring import RenameRefactoringTool
 
 class RefactoringGenerator:
     prompt = """
-    This is a complete py-file which is part of a larger library. Try to improve its readability by applying the following principles (if possible):
+    This is a complete Python file which is part of a larger library. Try to improve its readability by applying the following principles (if possible):
 
     1. Try to reduce the complexity of nested conditions.
     2. Try to shorten methods that are too long by splitting them up into smaller ones.
@@ -32,7 +32,11 @@ class RefactoringGenerator:
     Do not apply multiple refactorings at once, only one of the size of a regular commit.
     The code you return needs to be complete and have the same functionality as the original code.
 
-    You also have tools for refactoring available. You should use the tools if they are applicable to what you want to do.
+    You also have tools for refactoring available.
+
+    Prioritize the refactorings that have the biggest impact on the readability of the code. 
+    If you think that there are multiple applicable refactorings, choose the one that has the biggest impact on readability.
+    If a refactoring can be carried out by a tool, always use the tool instead of doing a free edit refactoring.
 
     {code_segment}
     """
