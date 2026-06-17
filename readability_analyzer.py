@@ -123,17 +123,32 @@ class ReadabilityAnalyzer:
         if len(self.metrics[filepath]) < 2:
             print("Not enough data to plot percentage change.")
             return
+        
+        figure, axes = plt.subplots(4, 1, sharex=True, figsize=(12, 14))
 
-        maintainability_indices = [m.maintainability_index for m in self.metrics[filepath]]
-        percentage_changes = [(maintainability_indices[i] - maintainability_indices[i-1]) / maintainability_indices[i-1] * 100 for i in range(1, len(maintainability_indices))]
+        self.plot_metric_group(filepath, ['cyclomatic_complexity', 'maintainability_index'], axes[0]) 
+        self.plot_metric_group(filepath, ['loc', 'lloc', 'sloc', 'comments', 'comment_blocks', 'blank_lines', 'single_comments'], axes[1])
+        self.plot_metric_group(filepath, ['halstead_h1', 'halstead_h2', 'halstead_n1', 'halstead_n2'], axes[2])
+        self.plot_metric_group(filepath, ['halstead_vocabulary', 'halstead_length', 'halstead_calculated_length', 'halstead_volume', 'halstead_difficulty', 'halstead_effort', 'halstead_time', 'halstead_bugs'], axes[3])
+        
+        figure.suptitle(f'Percentage Change in Metrics for {filepath}')
+        axes[-1].set_xlabel('Iteration')
+        figure.tight_layout(rect=[0, 0.03, 1, 0.97])
 
-        plt.figure(figsize=(10, 5))
-        plt.plot(range(1, len(maintainability_indices)), percentage_changes, marker='o')
-        plt.title(f'Percentage Change in Maintainability Index for {filepath}')
-        plt.xlabel('Iteration')
-        plt.ylabel('Percentage Change (%)')
-        plt.grid()
         if output_path:
-            plt.savefig(output_path)
+            figure.savefig(output_path)
         else:
-            plt.show()
+            figure.show()
+
+    def plot_metric_group(self, filepath: str, metric_group: list[str], axis: plt.Axes):
+        for metric in metric_group:
+            self.plot_metric(filepath, metric, axis)
+
+            axis.set_ylabel('Percentage Change (%)')
+            axis.grid(True)
+            axis.legend()
+
+    def plot_metric(self, filepath: str, metric: str, axis: plt.Axes):
+        values = [getattr(readability_metrics, metric) for readability_metrics in self.metrics[filepath]]
+        percentage_changes = [(values[i] - values[i-1]) / values[i-1] * 100 for i in range(1, len(values))]
+        axis.plot(range(1, len(values)), percentage_changes, marker='o', label=metric)
