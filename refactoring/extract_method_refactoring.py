@@ -2,9 +2,9 @@ from rope.base.project import Project
 from rope.base import libutils
 from rope.refactor.extract import ExtractMethod
 import os
-import logging
 
 from refactoring.refactoring import Refactoring
+from utility.cli import CLI
 
 class ExtractMethodRefactoring(Refactoring):
     def __init__(self, filepath: str, start_offset: int, end_offset: int, new_method_name: str):
@@ -17,8 +17,7 @@ class ExtractMethodRefactoring(Refactoring):
             self.extract_method = ExtractMethod(self.project, self.resource, start_offset=start_offset, end_offset=end_offset)
             self.changes = self.extract_method.get_changes(new_method_name)
         except Exception as e:
-            logger = logging.getLogger(f"refactoring.{__name__}")
-            logger.error(f"Failed to initialize ExtractMethodRefactoring for file {filepath} with start offset {start_offset} and end offset {end_offset}. Error: {e}")
+            CLI.print_error(f"Failed to initialize ExtractMethodRefactoring for file {filepath} with start offset {start_offset} and end offset {end_offset}. Error: {e}")
             return None
 
     def get_diff(self) -> str:
@@ -69,8 +68,7 @@ class ExtractMethodTool:
             end_offset = calculate_offset_for_line(filepath, end_line, include_line=True)
             return ExtractMethodRefactoring(filepath=filepath, start_offset=start_offset, end_offset=end_offset, new_method_name=new_name)
         except Exception as e:
-            logger = logging.getLogger(f"refactoring.{__name__}")
-            logger.error(f"Failed to create ExtractMethodRefactoring for file {filepath} from line {start_line} to line {end_line} with new method name '{new_name}'. Error: {e}")
+            CLI.print_error(f"Failed to create ExtractMethodRefactoring for file {filepath} from line {start_line} to line {end_line} with new method name '{new_name}'. Error: {e}")
             return None
 
 def calculate_offset_for_line(filepath: str, line_number: int, include_line: bool = False) -> int:

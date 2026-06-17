@@ -1,10 +1,10 @@
 import os
-import logging
 
 from refactoring.refactoring import Refactoring
 from rope.base.project import Project
 from rope.base import libutils
 from rope.refactor.rename import Rename
+from utility.cli import CLI
 
 class RenameRefactoring(Refactoring):
     def __init__(self, filepath: str, offset: int, new_name: str):
@@ -17,8 +17,7 @@ class RenameRefactoring(Refactoring):
             self.rename = Rename(self.project, self.resource, offset)
             self.changes = self.rename.get_changes(new_name)
         except Exception as e:
-            logger = logging.getLogger(f"refactoring.{__name__}")
-            logger.error(f"Failed to initialize RenameRefactoring for file {filepath} with offset {offset}. Error: {e}")
+            CLI.print_error(f"Failed to initialize RenameRefactoring for file {filepath} with offset {offset}. Error: {e}")
             return None
 
     def get_diff(self) -> str:
@@ -68,8 +67,7 @@ class RenameTool:
             offset = calculate_offset(filepath, line_number, old_name)
             return RenameRefactoring(filepath, offset, new_name)
         except Exception as e:
-            logger = logging.getLogger(f"refactoring.{__name__}")
-            logger.error(f"Failed to create RenameRefactoring for file {filepath} at line {line_number} renaming '{old_name}' to '{new_name}'. Error: {e}")
+            CLI.print_error(f"Failed to create RenameRefactoring for file {filepath} at line {line_number} renaming '{old_name}' to '{new_name}'. Error: {e}")
             return None
 
 def calculate_offset(filepath: str, line_number: int, identifier: str) -> int:

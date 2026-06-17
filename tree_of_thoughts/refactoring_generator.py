@@ -1,5 +1,4 @@
 from typing import List
-import logging
 from openai.types.chat import ChatCompletionMessageFunctionToolCall 
 import json
 
@@ -8,6 +7,7 @@ from refactoring.free_edit_refactoring import FreeEditRefactoring
 from refactoring.rename_refactoring import RenameTool
 from refactoring.extract_method_refactoring import ExtractMethodTool
 from llm.llm_types import ToolCall
+from utility.cli import CLI
 
 class RefactoringGenerator:
     prompt = """
@@ -69,28 +69,26 @@ class RefactoringGenerator:
         try:
             refactored_code = self.extract_python_code(response)
         except ValueError as e:
-            logger = logging.getLogger(f"refactoring.{__name__}")
-            logger.debug(f"Failed to extract Python code from LLM response: {response}")
+            CLI.print_debug(f"Failed to extract Python code from LLM response: {response}")
             return None
         return FreeEditRefactoring(filepath, code_segment, refactored_code)
     
     def handle_tool_call_response(self, tool_call: ToolCall, filepath: str) -> Refactoring|None:
-        logger = logging.getLogger(f"refactoring.{__name__}")
         arguments = json.loads(tool_call.arguments)
         if tool_call.name == "rename":
-            logger.debug(f"Received tool call for 'rename' with arguments: {arguments}")
+            CLI.print_debug(f"Received tool call for 'rename' with arguments: {arguments}")
             line_number = int(arguments.get("line_number"))
             old_name = arguments.get("old_name")
             new_name = arguments.get("new_name")
             return RenameTool.call(filepath=filepath, line_number=line_number, old_name=old_name, new_name=new_name)
         if tool_call.name == "extract_method":
-            logger.debug(f"Received tool call for 'extract_method' with arguments: {arguments}")
+            CLI.print_debug(f"Received tool call for 'extract_method' with arguments: {arguments}")
             start_line = int(arguments.get("start_line"))
             end_line = int(arguments.get("end_line"))
             new_name = arguments.get("new_name")
             return ExtractMethodTool.call(filepath=filepath, start_line=start_line, end_line=end_line, new_name=new_name) 
         else:
-            logger.debug(f"Received tool call for unknown tool '{tool_call.name}'. Response content: {tool_call}")
+            CLI.print_error(f"Received tool call for unknown tool '{tool_call.name}'. Response content: {tool_call}")
             return None
     
     def extract_python_code(self, text: str) -> str:

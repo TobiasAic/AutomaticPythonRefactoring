@@ -1,5 +1,4 @@
 from pathlib import Path
-import logging
 
 from git_repository import GitRepository
 from llm.openai_llm import OpenAILLM
@@ -13,6 +12,7 @@ from readability_analyzer import ReadabilityAnalyzer
 from config import Config
 from compiler import Compiler
 from tester.pytest_tester import PytestTester
+from utility.cli import CLI
 
 class RefactoringSystem:
     def __init__(self, config: Config):
@@ -28,25 +28,24 @@ class RefactoringSystem:
 
     def run(self):
         self.git_repository.create_branch(self.config.branch_name)
-        logger = logging.getLogger(f"refactoring.{__name__}")
-        logger.debug(f"Created and switched to branch '{self.git_repository.get_current_branch()}' for refactoring process")
+        CLI.print_debug(f"Successfully created and switched to branch '{self.git_repository.get_current_branch()}'")
 
         for filepath in self.config.get_absolute_file_paths():
             self.refactor_file(filepath)
             self.readability_analyzer.plot_percentage_change(filepath, output_path=self.config.get_absolute_statistics_directory() + f"/{Path(filepath).stem}_readability_plot.png")
 
         self.readability_analyzer.save(self.config.get_absolute_statistics_directory() + "/readability_metrics.json")
-        logger.info(f"Saved readability metrics to {self.config.get_absolute_statistics_directory() + '/readability_metrics.json'}")
+        CLI.print_debug(f"Saved readability metrics to {self.config.get_absolute_statistics_directory() + '/readability_metrics.json'}")
 
     def refactor_file(self, filepath: str):
         self.tester.test_before() # Run tests before starting the refactoring process to establish a baseline
         self.readability_analyzer.record_metrics(filepath)
-        logger = logging.getLogger(f"refactoring.{__name__}")
-        logger.info(f"Starting refactoring process for {Path(filepath).name}. Initial Maintainability Index: {self.readability_analyzer.metrics[filepath][-1].maintainability_index}")
+        CLI.print_debug(f"Starting refactoring process for {Path(filepath).name} with initial Maintainability Index: {self.readability_analyzer.metrics[filepath][-1].maintainability_index}")
 
         iteration = 0
 
         while self.is_improving(filepath):
+            print(f"=====Iteration {iteration + 1}=====")
             with open(filepath, "r") as f:
                 code_segment = f.read()
 
@@ -63,24 +62,24 @@ class RefactoringSystem:
             ranked_refactorings = sorted(refactoring_suggestions, key=lambda r: r.evaluation.grade if r.evaluation else 0, reverse=True)
 
             for refactoring in ranked_refactorings:
-                print(f"Evaluation: {refactoring.evaluation.description} (Correct: {refactoring.evaluation.correct}, Grade: {refactoring.evaluation.grade})")
+                CLI.print_debug(f"Evaluation: {refactoring.evaluation.description} (Correct: {refactoring.evaluation.correct}, Grade: {refactoring.evaluation.grade})")
 
             if ranked_refactorings[0].evaluation and ranked_refactorings[0].evaluation.correct:
                 best_refactoring = ranked_refactorings[0]
                 self.git_repository.checkout_commit(best_refactoring.commit_hash)
                 if self.validate_refactoring(filepath):
-                    logger.info(f"Applied refactoring with evaluation: {best_refactoring.evaluation.description} (Correct: {best_refactoring.evaluation.correct}, Grade: {best_refactoring.evaluation.grade})")
+                    CLI.print_debug(f"Applied refactoring with evaluation: {best_refactoring.evaluation.description} (Correct: {best_refactoring.evaluation.correct}, Grade: {best_refactoring.evaluation.grade})")
                     self.git_repository.move_branch(self.config.branch_name)
                 else:
-                    logger.info(f"Refactoring with evaluation '{best_refactoring.evaluation.description}' failed validation. Reverting to previous state.")
+                    CLI.print_debug(f"Refactoring with evaluation '{best_refactoring.evaluation.description}' failed validation. Reverting to previous state.")
                     self.git_repository.go_to_previous_commit()
 
             self.readability_analyzer.record_metrics(filepath)
-            logger.info(f"Analyzed readability metrics for {Path(filepath).name}: MI = {self.readability_analyzer.metrics[filepath][-1].maintainability_index}")
+            CLI.print_debug(f"Analyzed readability metrics for {Path(filepath).name}: MI = {self.readability_analyzer.metrics[filepath][-1].maintainability_index}")
 
             iteration += 1
             if self.config.max_iterations is not None and iteration >= self.config.max_iterations:
-                logger.info(f"Reached maximum iterations ({self.config.max_iterations}) for {Path(filepath).name}. Stopping refactoring process for this file.")
+                print(f"Reached maximum iterations ({self.config.max_iterations}) for {Path(filepath).name}. Stopping refactoring process for this file.")
                 break
 
     def is_improving(self, filepath: Path) -> bool:

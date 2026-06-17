@@ -1,11 +1,11 @@
 import json
 from typing import Optional
-import logging
 
 from refactoring.refactoring import Refactoring
 from refactoring.refactoring_evaluation import RefactoringEvaluation
 from llm.openai_llm import OpenAILLM
 from llm.llm_types import LLMResponse
+from utility.cli import CLI
 
 class RefactoringEvaluator:
     prompt = """
@@ -36,8 +36,7 @@ class RefactoringEvaluator:
             refactoring_evaluation = self.extract_evaluation(response)
             return refactoring_evaluation
         except ValueError as e:
-            logger = logging.getLogger(f"refactoring.{__name__}")
-            logger.error(f"LLM did not return a valid evaluation: {response}")
+            CLI.print_error(f"LLM did not return a valid evaluation: {response}")
             return None
 
     def extract_evaluation(self, llm_response: LLMResponse) -> RefactoringEvaluation:

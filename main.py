@@ -1,14 +1,13 @@
 import argparse
 from pathlib import Path
-import logging
 
 from config import load_from_toml
 from refactoring_system import RefactoringSystem
-from logging_setup import setup_logging
+from utility.cli import CLI
 
 
 if __name__ == '__main__':
-    setup_logging(level=logging.DEBUG)
+    CLI.set_debug_mode(True)
     parser = argparse.ArgumentParser(description='Automatic Python Refactoring Tool')
     parser.add_argument('config_path', help='Path to config file')
     args = parser.parse_args()

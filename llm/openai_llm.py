@@ -1,8 +1,8 @@
 from openai import OpenAI
-import logging
 import time
 
 from llm.llm_types import OpenAILLMConfig, LLMResponse, ToolCall
+from utility.cli import CLI
 
 class OpenAILLM():
     def __init__(self, config: OpenAILLMConfig, tools: list[dict] = []):
@@ -51,5 +51,4 @@ class OpenAILLM():
 
         generation_speed = ((reasoning_tokens if reasoning_tokens else 0) + answer_tokens) / response_time if response_time > 0 else 0
 
-        logger = logging.getLogger(f"refactoring.{__name__}")
-        logger.debug(f"{type(self).__name__}: prompt_tokens={prompt_tokens}{", reasoning_tokens={reasoning_tokens}}" if reasoning_tokens else ''}, answer_tokens={answer_tokens}, time={response_time:.2f}, generation_speed={generation_speed:.2f} tokens/second")
+        CLI.print_debug(f"{type(self).__name__}: prompt_tokens={prompt_tokens}{", reasoning_tokens={reasoning_tokens}}" if reasoning_tokens else ''}, answer_tokens={answer_tokens}, time={response_time:.2f}, generation_speed={generation_speed:.2f} tokens/second")
