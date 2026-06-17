@@ -33,6 +33,10 @@ class RefactoringSystem:
 
         for filepath in self.config.get_absolute_file_paths():
             self.refactor_file(filepath)
+            self.readability_analyzer.plot_percentage_change(filepath, output_path=self.config.get_absolute_statistics_directory() + f"/{Path(filepath).stem}_readability_plot.png")
+
+        self.readability_analyzer.save(self.config.get_absolute_statistics_directory() + "/readability_metrics.json")
+        logger.info(f"Saved readability metrics to {self.config.get_absolute_statistics_directory() + '/readability_metrics.json'}")
 
     def refactor_file(self, filepath: str):
         self.tester.test_before() # Run tests before starting the refactoring process to establish a baseline

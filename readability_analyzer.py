@@ -1,7 +1,9 @@
+import json
 from radon.complexity import cc_visit
 from radon.metrics import mi_visit, h_visit   
 from radon.raw import analyze as raw_analyze
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
+import matplotlib.pyplot as plt
 
 @dataclass
 class ReadabilityMetrics:
@@ -99,3 +101,39 @@ class ReadabilityAnalyzer:
             halstead_bugs=round(halstead_results.total.bugs, 2),
             maintainability_index=round(mi_results, 2)
         )
+    
+    def save(self, filepath: str):
+        with open(filepath, 'w') as file:
+            serializable_metrics = {
+                path: [asdict(metric) for metric in metrics_list]
+                for path, metrics_list in self.metrics.items()
+            }
+            json.dump(serializable_metrics, file)
+
+    def load(self, filepath: str):
+        with open(filepath, 'r') as file:
+            loaded_metrics = json.load(file)
+
+        self.metrics = {
+            path: [ReadabilityMetrics(**metric_data) for metric_data in metrics_list]
+            for path, metrics_list in loaded_metrics.items()
+        }
+
+    def plot_percentage_change(self, filepath: str, output_path: str = None):
+        if len(self.metrics[filepath]) < 2:
+            print("Not enough data to plot percentage change.")
+            return
+
+        maintainability_indices = [m.maintainability_index for m in self.metrics[filepath]]
+        percentage_changes = [(maintainability_indices[i] - maintainability_indices[i-1]) / maintainability_indices[i-1] * 100 for i in range(1, len(maintainability_indices))]
+
+        plt.figure(figsize=(10, 5))
+        plt.plot(range(1, len(maintainability_indices)), percentage_changes, marker='o')
+        plt.title(f'Percentage Change in Maintainability Index for {filepath}')
+        plt.xlabel('Iteration')
+        plt.ylabel('Percentage Change (%)')
+        plt.grid()
+        if output_path:
+            plt.savefig(output_path)
+        else:
+            plt.show()
