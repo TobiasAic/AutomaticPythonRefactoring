@@ -42,10 +42,8 @@ class RefactoringSystem:
         self.readability_analyzer.record_metrics(filepath)
         CLI.print_debug(f"Starting refactoring process for {Path(filepath).name} with initial Maintainability Index: {self.readability_analyzer.metrics[filepath][-1].maintainability_index}")
 
-        iteration = 0
-
-        while self.is_improving(filepath):
-            print(f"=====Iteration {iteration + 1}=====")
+        for iteration in range(self.config.max_iterations):
+            print("="*30 + f"Iteration {iteration + 1}" + "="*30)
             with open(filepath, "r") as f:
                 code_segment = f.read()
 
@@ -64,11 +62,6 @@ class RefactoringSystem:
 
             self.readability_analyzer.record_metrics(filepath)
             CLI.print_debug(f"Analyzed readability metrics for {Path(filepath).name}: MI = {self.readability_analyzer.metrics[filepath][-1].maintainability_index}")
-
-            iteration += 1
-            if self.config.max_iterations is not None and iteration >= self.config.max_iterations:
-                print(f"Reached maximum iterations ({self.config.max_iterations}) for {Path(filepath).name}. Stopping refactoring process for this file.")
-                break
 
     def apply_all_refactorings(self, filepath, iteration, sorted_refactorings):
         found_best_refactoring = False
@@ -97,20 +90,6 @@ class RefactoringSystem:
     def sort_refactorings_by_evaluation(self, refactorings: list) -> list:
         return sorted(refactorings, key=lambda r: r.evaluation.sorting_value() if r.evaluation else 0, reverse=True)
 
-    def is_improving(self, filepath: Path) -> bool:
-        if len(self.readability_analyzer.metrics.get(filepath, [])) < 2:
-            return True # for the first iteration
-
-        metrics_before = self.readability_analyzer.metrics[filepath][-2]
-        metrics_after = self.readability_analyzer.metrics[filepath][-1]
-
-        minimum_improvement = -0.05
-        improvement_percentage = (metrics_after.maintainability_index - metrics_before.maintainability_index) / metrics_before.maintainability_index
-        if improvement_percentage >= minimum_improvement:
-            return True
-        else:
-            return False
-        
     def validate_refactoring(self, filepath: str) -> bool:
         if not Compiler.try_compile_file(filepath):
             return False
