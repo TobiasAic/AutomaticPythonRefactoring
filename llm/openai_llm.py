@@ -34,8 +34,8 @@ class OpenAILLM():
             return LLMResponse(
                 text=None,
                 tool_call=ToolCall(
-                    name=response.choices[0].message.tool_calls[0].tool_name,
-                    arguments=response.choices[0].message.tool_calls[0].arguments
+                    name=response.choices[0].message.tool_calls[0].function.name,
+                    arguments=response.choices[0].message.tool_calls[0].function.arguments
                 )
             )
 
