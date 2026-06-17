@@ -2,6 +2,7 @@ import inspect
 
 class CLI:
     in_debug_mode = False
+    banner_width = 30
 
     @staticmethod
     def set_debug_mode(enabled: bool):
@@ -30,3 +31,7 @@ class CLI:
     def get_class_name(frame):
         self_obj = frame.f_locals.get("self")
         return type(self_obj).__name__ if self_obj else None
+    
+    def print_banner(message: str, symbol: str = "=", empty_line_count: int = 1):
+        banner = '\n' * empty_line_count + symbol * CLI.banner_width + f" {message} " + symbol * CLI.banner_width
+        print(banner)

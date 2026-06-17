@@ -40,10 +40,11 @@ class RefactoringSystem:
     def refactor_file(self, filepath: str):
         self.tester.test_before() # Run tests before starting the refactoring process to establish a baseline
         self.readability_analyzer.record_metrics(filepath)
-        CLI.print_debug(f"Starting refactoring process for {Path(filepath).name} with initial Maintainability Index: {self.readability_analyzer.metrics[filepath][-1].maintainability_index}")
+        CLI.print_banner(f"Starting refactoring for {Path(filepath).name}", symbol="=", empty_line_count=2)
 
         for iteration in range(self.config.max_iterations):
-            print("="*30 + f"Iteration {iteration + 1}" + "="*30)
+            CLI.print_banner(f"Iteration {iteration + 1} - Current MI: {self.readability_analyzer.metrics[filepath][-1].maintainability_index}", symbol="-")
+
             with open(filepath, "r") as f:
                 code_segment = f.read()
 
@@ -55,13 +56,21 @@ class RefactoringSystem:
 
             sorted_refactorings = self.sort_refactorings_by_evaluation(refactoring_suggestions)
 
+            self.print_refactorings(sorted_refactorings)
+
             if self.config.show_tree:
                 self.apply_all_refactorings(filepath, iteration, sorted_refactorings) 
             else:
                 self.apply_best_refactoring(filepath, sorted_refactorings)
 
             self.readability_analyzer.record_metrics(filepath)
-            CLI.print_debug(f"Analyzed readability metrics for {Path(filepath).name}: MI = {self.readability_analyzer.metrics[filepath][-1].maintainability_index}")
+
+    def print_refactorings(self, sorted_refactorings):
+        for i, refactoring in enumerate(sorted_refactorings):
+            if not refactoring.evaluation:
+                print(f"{i + 1}. Refactoring without evaluation")
+            else:
+                print(f"{i + 1}. {"Correct" if refactoring.evaluation.correct else "Incorrect"}, {refactoring.evaluation.grade}: {refactoring.evaluation.description}")
 
     def apply_all_refactorings(self, filepath, iteration, sorted_refactorings):
         found_best_refactoring = False
