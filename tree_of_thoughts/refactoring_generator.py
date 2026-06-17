@@ -1,6 +1,7 @@
 from typing import List
 from openai.types.chat import ChatCompletionMessageFunctionToolCall 
 import json
+from tqdm import tqdm
 
 from refactoring.refactoring import Refactoring
 from refactoring.free_edit_refactoring import FreeEditRefactoring
@@ -50,7 +51,7 @@ class RefactoringGenerator:
         prompt = self.prompt.format(code_segment=self.add_line_numbers(code_segment))
 
         refactorings = []
-        for i in range(count):
+        for i in tqdm(range(count), desc="Generating refactorings"):
             response = self.llm.generate(prompt)
 
             if response.text is not None:
@@ -80,13 +81,19 @@ class RefactoringGenerator:
             line_number = int(arguments.get("line_number"))
             old_name = arguments.get("old_name")
             new_name = arguments.get("new_name")
-            return RenameTool.call(filepath=filepath, line_number=line_number, old_name=old_name, new_name=new_name)
+            try:
+                return RenameTool.call(filepath=filepath, line_number=line_number, old_name=old_name, new_name=new_name)
+            except Exception as e:
+                return None
         if tool_call.name == "extract_method":
             CLI.print_debug(f"Received tool call for 'extract_method' with arguments: {arguments}")
             start_line = int(arguments.get("start_line"))
             end_line = int(arguments.get("end_line"))
             new_name = arguments.get("new_name")
-            return ExtractMethodTool.call(filepath=filepath, start_line=start_line, end_line=end_line, new_name=new_name) 
+            try:
+                return ExtractMethodTool.call(filepath=filepath, start_line=start_line, end_line=end_line, new_name=new_name)
+            except Exception as e:
+                return None
         else:
             CLI.print_error(f"Received tool call for unknown tool '{tool_call.name}'. Response content: {tool_call}")
             return None

@@ -1,4 +1,6 @@
 from pathlib import Path
+from tqdm import tqdm
+import time
 
 from git_repository import GitRepository
 from llm.openai_llm import OpenAILLM
@@ -19,14 +21,17 @@ class RefactoringSystem:
         self.config = config
 
         self.git_repository = GitRepository(config.get_absolute_git_repo_path())
-        generator_llm = ReplayLLM(config=big_pickle_config, filepath="replays/generator_responses.json", tools=[RenameTool.get_description(), ExtractMethodTool.get_description()], mode=ReplayMode.REPLAY)
-        evaluator_llm = ReplayLLM(config=big_pickle_config, filepath="replays/evaluator_responses.json", mode=ReplayMode.REPLAY)
+        # generator_llm = ReplayLLM(config=big_pickle_config, filepath="replays/generator_responses.json", tools=[RenameTool.get_description(), ExtractMethodTool.get_description()], mode=ReplayMode.REPLAY)
+        # evaluator_llm = ReplayLLM(config=big_pickle_config, filepath="replays/evaluator_responses.json", mode=ReplayMode.REPLAY)
+        generator_llm = OpenAILLM(config=big_pickle_config, tools=[RenameTool.get_description(), ExtractMethodTool.get_description()])
+        evaluator_llm = OpenAILLM(config=big_pickle_config)
         self.refactoring_generator = RefactoringGenerator(generator_llm)
         self.refactoring_evaluator = RefactoringEvaluator(evaluator_llm)
         self.readability_analyzer = ReadabilityAnalyzer()
         self.tester = PytestTester(project_root=Path(config.get_absolute_test_root_path()), pyenv_name=config.pyenv_name)
 
     def run(self):
+        start = time.time()
         self.git_repository.create_branch(self.config.branch_name)
         CLI.print_debug(f"Successfully created and switched to branch '{self.git_repository.get_current_branch()}'")
 
@@ -36,6 +41,7 @@ class RefactoringSystem:
 
         self.readability_analyzer.save(self.config.get_absolute_statistics_directory() + "/readability_metrics.json")
         CLI.print_debug(f"Saved readability metrics to {self.config.get_absolute_statistics_directory() + '/readability_metrics.json'}")
+        print(f"Finished refactoring in {time.time() - start} seconds")
 
     def refactor_file(self, filepath: str):
         self.tester.test_before() # Run tests before starting the refactoring process to establish a baseline
@@ -50,7 +56,7 @@ class RefactoringSystem:
 
             refactoring_suggestions = self.refactoring_generator.generate_refactorings(code_segment, count=2, filepath=filepath)
 
-            for refactoring in refactoring_suggestions:
+            for refactoring in tqdm(refactoring_suggestions, desc="Evaluating refactorings"):
                 evaluation = self.refactoring_evaluator.evaluate(refactoring)
                 refactoring.evaluation = evaluation
 
