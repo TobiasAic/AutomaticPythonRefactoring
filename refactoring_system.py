@@ -51,28 +51,16 @@ class RefactoringSystem:
 
             refactoring_suggestions = self.refactoring_generator.generate_refactorings(code_segment, count=2, filepath=filepath)
 
-            for i, refactoring in enumerate(refactoring_suggestions):
+            for refactoring in refactoring_suggestions:
                 evaluation = self.refactoring_evaluator.evaluate(refactoring)
                 refactoring.evaluation = evaluation
-                refactoring.execute()
-                self.git_repository.create_branch(f"suggestion_{iteration + 1}_{i + 1}")
-                refactoring.commit_hash = self.git_repository.commit_changes(refactoring.evaluation.description)
-                self.git_repository.go_to_previous_commit() 
 
-            ranked_refactorings = sorted(refactoring_suggestions, key=lambda r: r.evaluation.grade if r.evaluation else 0, reverse=True)
+            sorted_refactorings = self.sort_refactorings_by_evaluation(refactoring_suggestions)
 
-            for refactoring in ranked_refactorings:
-                CLI.print_debug(f"Evaluation: {refactoring.evaluation.description} (Correct: {refactoring.evaluation.correct}, Grade: {refactoring.evaluation.grade})")
-
-            if ranked_refactorings[0].evaluation and ranked_refactorings[0].evaluation.correct:
-                best_refactoring = ranked_refactorings[0]
-                self.git_repository.checkout_commit(best_refactoring.commit_hash)
-                if self.validate_refactoring(filepath):
-                    CLI.print_debug(f"Applied refactoring with evaluation: {best_refactoring.evaluation.description} (Correct: {best_refactoring.evaluation.correct}, Grade: {best_refactoring.evaluation.grade})")
-                    self.git_repository.move_branch(self.config.branch_name)
-                else:
-                    CLI.print_debug(f"Refactoring with evaluation '{best_refactoring.evaluation.description}' failed validation. Reverting to previous state.")
-                    self.git_repository.go_to_previous_commit()
+            if self.config.show_tree:
+                self.apply_all_refactorings(filepath, iteration, sorted_refactorings) 
+            else:
+                self.apply_best_refactoring(filepath, sorted_refactorings)
 
             self.readability_analyzer.record_metrics(filepath)
             CLI.print_debug(f"Analyzed readability metrics for {Path(filepath).name}: MI = {self.readability_analyzer.metrics[filepath][-1].maintainability_index}")
@@ -81,6 +69,33 @@ class RefactoringSystem:
             if self.config.max_iterations is not None and iteration >= self.config.max_iterations:
                 print(f"Reached maximum iterations ({self.config.max_iterations}) for {Path(filepath).name}. Stopping refactoring process for this file.")
                 break
+
+    def apply_all_refactorings(self, filepath, iteration, sorted_refactorings):
+        found_best_refactoring = False
+        for i, refactoring in enumerate(sorted_refactorings):
+            refactoring.execute()
+            self.git_repository.create_branch(f"{Path(filepath).name.replace('.py', '')}_{iteration + 1}_{i + 1}")
+            self.git_repository.commit_changes(refactoring.evaluation.description)
+            if not found_best_refactoring and self.validate_refactoring(filepath):
+                self.git_repository.move_branch(self.config.branch_name)
+                found_best_refactoring = True
+            self.git_repository.go_to_previous_commit()
+        self.git_repository.checkout_branch(self.config.branch_name)
+
+    def apply_best_refactoring(self, filepath, sorted_refactorings):
+        for refactoring in sorted_refactorings:
+            if refactoring.evaluation and refactoring.evaluation.correct:
+                if self.validate_refactoring(filepath):
+                    refactoring.execute()
+                    self.git_repository.commit_changes(refactoring.evaluation.description)
+                    break
+                else:
+                    CLI.print_debug(f"Refactoring '{refactoring.evaluation.description}' failed validation. Trying next best refactoring.")
+        else:
+            print("No correct refactorings generated in this iteration")
+
+    def sort_refactorings_by_evaluation(self, refactorings: list) -> list:
+        return sorted(refactorings, key=lambda r: r.evaluation.sorting_value() if r.evaluation else 0, reverse=True)
 
     def is_improving(self, filepath: Path) -> bool:
         if len(self.readability_analyzer.metrics.get(filepath, [])) < 2:

@@ -11,7 +11,8 @@ class Config():
     pyenv_name: str
     test_root_path: str
     max_iterations: int = None
-    statistics_directory: str = None 
+    statistics_directory: str = None
+    show_tree: bool = False
 
     def __str__(self):
         return (
@@ -23,7 +24,8 @@ class Config():
             f"  pyenv_name='{self.pyenv_name}',\n"
             f"  test_root_path='{self.test_root_path}',\n"
             f"  max_iterations={self.max_iterations},\n"
-            f"  statistics_directory='{self.statistics_directory}'\n"
+            f"  statistics_directory='{self.statistics_directory}',\n"
+            f"  show_tree={self.show_tree}\n"
             f")"
         )
     
@@ -51,5 +53,6 @@ def load_from_toml(file_path: str) -> "Config":
         pyenv_name=data["pyenv_name"],
         test_root_path=data["test_root_path"],
         max_iterations=data["max_iterations"],
-        statistics_directory=data["statistics_directory"]
+        statistics_directory=data["statistics_directory"],
+        show_tree=data["show_tree"]
     )

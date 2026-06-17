@@ -75,3 +75,9 @@ class GitRepository:
             return None
         except Exception as e:
             raise Exception(f"Failed to get current branch: {str(e)}")
+        
+    def checkout_branch(self, branch_name: str):
+        try:
+            self.repo.git.checkout(branch_name)
+        except Exception as e:
+            raise Exception(f"Failed to checkout branch '{branch_name}': {str(e)}")
