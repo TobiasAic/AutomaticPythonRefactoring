@@ -3,6 +3,7 @@ import logging
 
 from git_repository import GitRepository
 from llm.openai_llm import OpenAILLM
+from llm.replay_llm import ReplayLLM, ReplayMode
 from llm.llm_presets import big_pickle_config
 from refactoring.rename_refactoring import RenameTool
 from refactoring.extract_method_refactoring import ExtractMethodTool
@@ -18,8 +19,10 @@ class RefactoringSystem:
         self.config = config
 
         self.git_repository = GitRepository(config.get_absolute_git_repo_path())
-        self.refactoring_generator = RefactoringGenerator(OpenAILLM(config=big_pickle_config, tools=[RenameTool.get_description(), ExtractMethodTool.get_description()]))
-        self.refactoring_evaluator = RefactoringEvaluator(OpenAILLM(config=big_pickle_config))
+        generator_llm = ReplayLLM(config=big_pickle_config, filepath="replays/generator_responses.json", tools=[RenameTool.get_description(), ExtractMethodTool.get_description()], mode=ReplayMode.REPLAY)
+        evaluator_llm = ReplayLLM(config=big_pickle_config, filepath="replays/evaluator_responses.json", mode=ReplayMode.REPLAY)
+        self.refactoring_generator = RefactoringGenerator(generator_llm)
+        self.refactoring_evaluator = RefactoringEvaluator(evaluator_llm)
         self.readability_analyzer = ReadabilityAnalyzer()
         self.tester = PytestTester(project_root=Path(config.get_absolute_test_root_path()), pyenv_name=config.pyenv_name)
 

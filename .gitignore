@@ -34,3 +34,6 @@ venv/
 
 # Rope project files
 .ropeproject/
+
+# Replays
+replays/
