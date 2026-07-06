@@ -44,7 +44,8 @@ class RefactoringSystem:
         print(f"Finished refactoring in {time.time() - start} seconds")
 
     def refactor_file(self, filepath: str):
-        self.tester.test_before() # Run tests before starting the refactoring process to establish a baseline
+        test_results = self.tester.test_before() # Run tests before starting the refactoring process to establish a baseline
+        print(f"Test results before refactoring: {test_results}")
         self.readability_analyzer.record_metrics(filepath)
         CLI.print_banner(f"Starting refactoring for {Path(filepath).name}", symbol="=", empty_line_count=2)
 
