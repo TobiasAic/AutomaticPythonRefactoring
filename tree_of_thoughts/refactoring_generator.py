@@ -42,14 +42,18 @@ class RefactoringGenerator:
     If you think that there are multiple applicable refactorings, choose the one that has the biggest impact on readability.
     If a refactoring can be carried out by a tool, always use the tool instead of doing a free edit refactoring.
 
+    Here are the refactorings you have already done in the past:
+    {commit_history}
+    Do not repeat the same or similar refactorings in the same places again.
+
     {code_segment}
     """
 
     def __init__(self, llm):
         self.llm = llm
 
-    def generate_refactorings(self, code_segment: str, count: int, filepath: str) -> List[Refactoring]:
-        prompt = self.prompt.format(code_segment=self.add_line_numbers(code_segment))
+    def generate_refactorings(self, code_segment: str, count: int, filepath: str, commit_history: list) -> List[Refactoring]:
+        prompt = self.prompt.format(code_segment=self.add_line_numbers(code_segment), commit_history=commit_history)
 
         refactorings = []
         for i in tqdm(range(count), desc="Generating refactorings"):

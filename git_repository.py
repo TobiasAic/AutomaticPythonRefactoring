@@ -81,3 +81,11 @@ class GitRepository:
             self.repo.git.checkout(branch_name)
         except Exception as e:
             raise Exception(f"Failed to checkout branch '{branch_name}': {str(e)}")
+        
+    def get_commit_history(self) -> list:
+        try:
+            commits = list(self.repo.iter_commits(self.get_current_branch()))
+            return [commit.message for commit in commits]
+        except Exception as e:
+            raise Exception(f"Failed to get commit history for branch '{self.get_current_branch()}': {str(e)}")
+        

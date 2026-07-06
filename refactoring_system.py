@@ -55,7 +55,8 @@ class RefactoringSystem:
             with open(filepath, "r") as f:
                 code_segment = f.read()
 
-            refactoring_suggestions = self.refactoring_generator.generate_refactorings(code_segment, count=2, filepath=filepath)
+            commit_history = self.git_repository.get_commit_history()
+            refactoring_suggestions = self.refactoring_generator.generate_refactorings(code_segment, count=2, filepath=filepath, commit_history=commit_history)
 
             for refactoring in tqdm(refactoring_suggestions, desc="Evaluating refactorings"):
                 evaluation = self.refactoring_evaluator.evaluate(refactoring)
