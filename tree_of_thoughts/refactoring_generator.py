@@ -3,6 +3,7 @@ from openai.types.chat import ChatCompletionMessageFunctionToolCall
 import json
 from tqdm import tqdm
 
+from refactoring.multi_rename_refactoring import RenameArguments, MultiRenameTool
 from refactoring.refactoring import Refactoring
 from refactoring.free_edit_refactoring import FreeEditRefactoring
 from refactoring.rename_refactoring import RenameTool
@@ -92,6 +93,19 @@ class RefactoringGenerator:
             new_name = arguments.get("new_name")
             try:
                 return ExtractMethodTool.call(filepath=filepath, start_line=start_line, end_line=end_line, new_name=new_name)
+            except Exception as e:
+                return None
+        if tool_call.name == "multi_rename":
+            CLI.print_debug(f"Received tool call for 'multi_rename' with arguments: {arguments}")
+            changes = arguments.get("changes", [])
+            rename_arguments = []
+            for change in changes:
+                line_number = int(change.get("line_number"))
+                old_name = change.get("old_name")
+                new_name = change.get("new_name")
+                rename_arguments.append(RenameArguments(line_number=line_number, old_name=old_name, new_name=new_name))
+            try:
+                return MultiRenameTool.call(filepath=filepath, rename_arguments=rename_arguments)
             except Exception as e:
                 return None
         else:
