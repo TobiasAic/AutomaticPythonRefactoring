@@ -17,11 +17,8 @@ class RefactoringEvaluator:
         "grade": 0-10,
     }}
 
-    The commit message should adhere to the Conventional Commits specification as provided here:
+    The commit message should adhere to the Conventional Commits specification with a few additions as provided here:
     {conventional_commits_specification}
-
-    It should also adhere to the following guidelines:
-    {additional_commit_specifications}
 
     The correct field should only be true if the refactoring does not alter the behavior of the code.
     The grade should be an integer between 0 and 10, where 0 indicates a poor refactoring that does not improve code quality, and 10 indicates an excellent refactoring that significantly enhances code quality.
@@ -35,11 +32,9 @@ class RefactoringEvaluator:
 
     def evaluate(self, refactoring: Refactoring) -> Optional[RefactoringEvaluation]:
         conventional_commits_specification = self.load_md_as_string("tree_of_thoughts/conventional_commits_specification.md")
-        additional_commit_specifications = self.load_md_as_string("tree_of_thoughts/additional_commit_specifications.md")
         prompt = RefactoringEvaluator.prompt.format(
             diff=refactoring.get_diff(),
-            conventional_commits_specification=conventional_commits_specification,
-            additional_commit_specifications=additional_commit_specifications
+            conventional_commits_specification=conventional_commits_specification
         )
         response = self.llm.generate(prompt)
 
