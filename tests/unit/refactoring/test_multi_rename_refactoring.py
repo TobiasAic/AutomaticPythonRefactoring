@@ -8,7 +8,7 @@ def test_multi_rename_refactoring(example_code_file):
         RenameArguments(line_number=11, old_name='done', new_name='new_done'),
     ]
 
-    refactoring = MultiRenameRefactoring(filepath=example_code_file, rename_arguments=renames)
+    refactoring = MultiRenameRefactoring(example_code_file, renames)
 
     refactoring.execute()
     assert compare_files(example_code_file, "tests/test_files/multi_rename.py")

@@ -1,32 +1,19 @@
 import os
 
-from refactoring.refactoring import Refactoring
-from rope.base.project import Project
+from refactoring.rope_refactoring import RopeRefactoring
 from rope.base import libutils
 from rope.refactor.rename import Rename
 from utility.cli import CLI
+from refactoring.rename_shared import RenameArguments, calculate_offset
 
-class RenameRefactoring(Refactoring):
-    def __init__(self, filepath: str, offset: int, new_name: str):
-        super().__init__(filepath)
+class RenameRefactoring(RopeRefactoring[RenameArguments]):
+    def execute_rope_refactoring(self, project, filepath, refactoring_arguments: RenameArguments):
 
-        # ropefolder=None stops rope from creating a .ropeproject folder, which helps to keep the project directory clean
-        self.project = Project(os.path.dirname(filepath), ropefolder=None)
-        self.resource = libutils.path_to_resource(self.project, filepath)
-        self.rename = Rename(self.project, self.resource, offset)
-        self.changes = self.rename.get_changes(new_name)
-
-    def get_diff(self) -> str:
-       return self.changes.get_description()
-
-    def execute(self) -> None:
-       self.project.do(self.changes) 
-    
-    def revert(self) -> None:
-        self.project.history.undo()
-
-    def __del__(self):
-        self.project.close()
+        resource = libutils.path_to_resource(project, filepath)
+        offset = calculate_offset(filepath, refactoring_arguments.line_number, refactoring_arguments.old_name)
+        rename = Rename(project, resource, offset)
+        changes = rename.get_changes(refactoring_arguments.new_name)
+        project.do(changes)
 
 class RenameTool:
     @staticmethod
@@ -60,19 +47,7 @@ class RenameTool:
 
     def call(filepath: str, line_number: int, old_name: str, new_name: str) -> RenameRefactoring:
         try:
-            offset = calculate_offset(filepath, line_number, old_name)
-            return RenameRefactoring(filepath, offset, new_name)
+            return RenameRefactoring(filepath, RenameArguments(line_number=line_number, old_name=old_name, new_name=new_name))
         except Exception as e:
             CLI.print_error(f"Failed to create RenameRefactoring for file {filepath} at line {line_number} renaming '{old_name}' to '{new_name}'. Error: {e}")
             return None
-
-def calculate_offset(filepath: str, line_number: int, identifier: str) -> int:
-    with open(filepath, "r") as f:
-        lines = f.readlines()
-
-    offset = 0
-    for i in range(line_number - 1):
-        offset += len(lines[i])
-
-    offset += lines[line_number - 1].index(identifier)
-    return offset

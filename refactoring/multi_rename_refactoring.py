@@ -1,31 +1,18 @@
-import os
-
-from dataclasses import dataclass
-
-from refactoring.free_edit_refactoring import FreeEditRefactoring 
 from rope.base.project import Project
 from rope.base import libutils
 from rope.refactor.rename import Rename
+
 from utility.cli import CLI
+from refactoring.rope_refactoring import RopeRefactoring
+from refactoring.rename_shared import RenameArguments, calculate_offset
 
-@dataclass
-class RenameArguments:
-    line_number: int
-    old_name: str
-    new_name: str
-
-class MultiRenameRefactoring(FreeEditRefactoring):
-    def __init__(self, filepath: str, rename_arguments: list[RenameArguments]):
-        old_code = self.read_file(filepath)
-
-        # ropefolder=None stops rope from creating a .ropeproject folder, which helps to keep the project directory clean
-        project = Project(os.path.dirname(filepath), ropefolder=None)
-
-        for argument in rename_arguments:
+class MultiRenameRefactoring(RopeRefactoring[list[RenameArguments]]):
+    def execute_rope_refactoring(self, project: Project, filepath: str, refactoring_arguments: list[RenameArguments]) -> None:
+        for argument in refactoring_arguments:
             resource = libutils.path_to_resource(project, filepath)
 
             try:
-                offset = self.calculate_offset(filepath, argument.line_number, argument.old_name)
+                offset = calculate_offset(filepath, argument.line_number, argument.old_name)
             except ValueError as e:
                 CLI.print_error(f"Failed to calculate offset for argument {argument}. Error: {e}")
                 continue
@@ -34,34 +21,6 @@ class MultiRenameRefactoring(FreeEditRefactoring):
 
             changes = rename.get_changes(argument.new_name)
             project.do(changes)
-
-        project.close()
-        new_code = self.read_file(filepath)
-        self.write_file(filepath, old_code)
-
-        super().__init__(filepath, old_code, new_code)
-
-    def revert(self) -> None:
-        self.write_file(self.filepath, self.old_code)
-
-    def calculate_offset(self, filepath: str, line_number: int, identifier: str) -> int:
-        with open(filepath, "r") as f:
-            lines = f.readlines()
-
-        offset = 0
-        for i in range(line_number - 1):
-            offset += len(lines[i])
-
-        offset += lines[line_number - 1].index(identifier)
-        return offset
-
-    def read_file(self, filepath: str) -> str:
-        with open(filepath, 'r') as file:
-            return file.read()
-        
-    def write_file(self, filepath: str, content: str) -> None:
-        with open(filepath, 'w') as file:
-            file.write(content)
 
 class MultiRenameTool:
     @staticmethod

@@ -1,32 +1,25 @@
 from rope.base.project import Project
 from rope.base import libutils
 from rope.refactor.extract import ExtractMethod
-import os
+from dataclasses import dataclass
 
-from refactoring.refactoring import Refactoring
+from refactoring.rope_refactoring import RopeRefactoring
 from utility.cli import CLI
 
-class ExtractMethodRefactoring(Refactoring):
-    def __init__(self, filepath: str, start_offset: int, end_offset: int, new_method_name: str):
-        super().__init__(filepath)
+@dataclass
+class ExtractMethodArguments:
+    start_line: int
+    end_line: int
+    new_name: str
 
-        # ropefolder=None stops rope from creating a .ropeproject folder, which helps to keep the project directory clean
-        self.project = Project(os.path.dirname(filepath), ropefolder=None)
-        self.resource = libutils.path_to_resource(self.project, filepath)
-        self.extract_method = ExtractMethod(self.project, self.resource, start_offset=start_offset, end_offset=end_offset)
-        self.changes = self.extract_method.get_changes(new_method_name)
-
-    def get_diff(self) -> str:
-       return self.changes.get_description()
-
-    def execute(self) -> None:
-       self.project.do(self.changes) 
-    
-    def revert(self) -> None:
-        self.project.history.undo()
-
-    def __del__(self):
-        self.project.close()
+class ExtractMethodRefactoring(RopeRefactoring):
+    def execute_rope_refactoring(self, project: Project, filepath: str, refactoring_arguments: ExtractMethodArguments) -> None:
+        resource = libutils.path_to_resource(project, filepath)
+        start_offset = calculate_offset_for_line(filepath, refactoring_arguments.start_line)
+        end_offset = calculate_offset_for_line(filepath, refactoring_arguments.end_line, include_line=True)
+        extract_method = ExtractMethod(project, resource, start_offset=start_offset, end_offset=end_offset)
+        changes = extract_method.get_changes(refactoring_arguments.new_name)
+        project.do(changes)
 
 class ExtractMethodTool:
     @staticmethod
@@ -60,9 +53,7 @@ class ExtractMethodTool:
 
     def call(filepath: str, start_line: int, end_line: int, new_name: str) -> ExtractMethodRefactoring:
         try:
-            start_offset = calculate_offset_for_line(filepath, start_line)
-            end_offset = calculate_offset_for_line(filepath, end_line, include_line=True)
-            return ExtractMethodRefactoring(filepath=filepath, start_offset=start_offset, end_offset=end_offset, new_method_name=new_name)
+            return ExtractMethodRefactoring(filepath, ExtractMethodArguments(start_line=start_line, end_line=end_line, new_name=new_name))
         except Exception as e:
             CLI.print_error(f"Failed to create ExtractMethodRefactoring for file {filepath} from line {start_line} to line {end_line} with new method name '{new_name}'. Error: {e}")
             return None
