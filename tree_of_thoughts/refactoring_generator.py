@@ -10,37 +10,26 @@ from refactoring.rename_refactoring import RenameTool
 from refactoring.extract_method_refactoring import ExtractMethodTool
 from llm.llm_types import ToolCall
 from utility.cli import CLI
+from llm.openai_llm import OpenAILLM
+from llm.llm_presets import big_pickle_config
 
 class RefactoringGenerator:
     prompt = """
-    This is a complete Python file which is part of a larger library. Try to improve its readability by applying the following principles (if possible):
+    This is a complete Python file which is part of a larger library. Try to improve its readability by applying a single, small refactoring. 
 
+    Here are some of the refactorings you can do ranked by priority:
     1. Try to reduce the complexity of nested conditions.
-    2. Try to shorten methods that are too long by splitting them up into smaller ones.
-    3. In case if variables inside methods (that only have impact on the part of code we are editing) are named in a bad way, rename them.
-    4. Add a docstring for every method and add a comment to every line of code.
-    5. Ensure that code modifications are wrapped in Markdown's python code block syntax:
+    2. Try to shorten methods that are too long by splitting them up into smaller ones
+    3. Add type hints to function signatures if they are missing
+    4. Rename local variables to more descriptive names if they are not clear
+    5. Add a descriptive docstring for every method if missing or incomplete
 
-    ```python
-        ...some python code...
-    ```
+    You MUST NOT:
+    - Change the functionality of the code in any way. The code must behave exactly the same after your changes.
+    - Rename functions, their parameters, or class names. 
+    - Add any import statements.
 
-    6. Do not rename the name of the function or method itself. Only rename variables that are defined inside the method or function. If you
-    rename anything, make sure that the scope does not extend to other parts of the code.
-    7. Most importantly, ensure that these changes do not break integration with the larger library.
-    8. Do not add any 'import' statements in your response. This also means that you must not add any new functionalities
-    to the code that depend on such 'import' statements.
-    9. Do not create new classes or rename old ones. Only edit existing ones if needed.
-
-    Return the complete code with only a single, small refactoring applied that improves readability. 
-    Do not apply multiple refactorings at once, only one of the size of a regular commit.
-    The code you return needs to be complete and have the same functionality as the original code.
-
-    You also have tools for refactoring available.
-
-    Prioritize the refactorings that have the biggest impact on the readability of the code. 
-    If you think that there are multiple applicable refactorings, choose the one that has the biggest impact on readability.
-    If a refactoring can be carried out by a tool, always use the tool instead of doing a free edit refactoring.
+    {return_message}
 
     Here are the refactorings you have already done in the past:
     {commit_history}
@@ -49,15 +38,35 @@ class RefactoringGenerator:
     {code_segment}
     """
 
+    return_with_tools = """
+    Some refactorings can be done by calling a tool. If the refactoring can be done by a tool, you MUST use the tool.
+    If the refactoring can't be done by a tool, return the refactored in a Markdown Python code block (without line numbers):
+    ```python
+        ...some python code...
+    ```
+    """
+
+    return_without_tools = """
+    Return the refactored code in a Markdown Python code block (without line numbers):
+    ```python
+        ...some python code...
+    ```
+    """
+
     def __init__(self, llm):
         self.llm = llm
 
     def generate_refactorings(self, code_segment: str, count: int, filepath: str, commit_history: list) -> List[Refactoring]:
-        prompt = self.prompt.format(code_segment=self.add_line_numbers(code_segment), commit_history=commit_history)
 
         refactorings = []
         for i in tqdm(range(count), desc="Generating refactorings"):
-            response = self.llm.generate(prompt)
+            tools = [RenameTool.get_description(), ExtractMethodTool.get_description(), MultiRenameTool.get_description()] if i % 2 == 0 else []
+
+            generator_llm = OpenAILLM(config=big_pickle_config, tools=tools)
+            return_message = self.return_with_tools if len(tools) > 0 else self.return_without_tools
+            prompt = self.prompt.format(code_segment=self.add_line_numbers(code_segment), commit_history=commit_history, return_message=return_message)
+            print(f"Generating with {len(tools)} tools. Prompt length: {len(prompt)} characters.")
+            response = generator_llm.generate(prompt)
 
             if response.text is not None:
                 refactoring = self.handle_string_response(response.text, code_segment, filepath)
