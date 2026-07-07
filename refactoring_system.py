@@ -86,7 +86,7 @@ class RefactoringSystem:
             refactoring.execute()
             self.git_repository.create_branch(f"{Path(filepath).name.replace('.py', '')}_{iteration + 1}_{i + 1}")
             self.git_repository.commit_changes(refactoring.evaluation.description)
-            if not found_best_refactoring and self.validate_refactoring(filepath):
+            if not found_best_refactoring and self.validate_refactoring(filepath) and refactoring.evaluation.correct:
                 self.git_repository.move_branch(self.config.branch_name)
                 found_best_refactoring = True
             self.git_repository.go_to_previous_commit()
