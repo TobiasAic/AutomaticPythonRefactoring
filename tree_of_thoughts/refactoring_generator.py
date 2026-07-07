@@ -2,56 +2,32 @@ from typing import List
 from openai.types.chat import ChatCompletionMessageFunctionToolCall 
 import json
 from tqdm import tqdm
+from dataclasses import dataclass
 
 from refactoring.multi_rename_refactoring import RenameArguments, MultiRenameTool
 from refactoring.refactoring import Refactoring
-from refactoring.free_edit_refactoring import FreeEditRefactoring
 from refactoring.rename_refactoring import RenameTool
 from refactoring.extract_method_refactoring import ExtractMethodTool
 from llm.llm_types import ToolCall
 from utility.cli import CLI
 from llm.openai_llm import OpenAILLM
 from llm.llm_presets import big_pickle_config
+from tree_of_thoughts.generator_prompts import header, with_tools_return_instruction, without_tools_return_instruction, control_flow, footer, method_structure, expression, type_documentation, naming
+
+@dataclass
+class PromptWithTools:
+    prompt: str
+    tools: List[dict]
+
 
 class RefactoringGenerator:
-    prompt = """
-    This is a complete Python file which is part of a larger library. Try to improve its readability by applying a single, small refactoring. 
-
-    Here are some of the refactorings you can do ranked by priority:
-    1. Try to reduce the complexity of nested conditions.
-    2. Try to shorten methods that are too long by splitting them up into smaller ones
-    3. Add type hints to function signatures if they are missing
-    4. Rename local variables to more descriptive names if they are not clear
-    5. Add a descriptive docstring for every method if missing or incomplete
-
-    You MUST NOT:
-    - Change the functionality of the code in any way. The code must behave exactly the same after your changes.
-    - Rename functions, their parameters, or class names. 
-    - Add any import statements.
-
-    {return_message}
-
-    Here are the refactorings you have already done in the past:
-    {commit_history}
-    Do not repeat the same or similar refactorings in the same places again.
-
-    {code_segment}
-    """
-
-    return_with_tools = """
-    Some refactorings can be done by calling a tool. If the refactoring can be done by a tool, you MUST use the tool.
-    If the refactoring can't be done by a tool, return the refactored in a Markdown Python code block (without line numbers):
-    ```python
-        ...some python code...
-    ```
-    """
-
-    return_without_tools = """
-    Return the refactored code in a Markdown Python code block (without line numbers):
-    ```python
-        ...some python code...
-    ```
-    """
+    prompts_with_tools = [
+        PromptWithTools(prompt=header.format(return_instruction=without_tools_return_instruction)+control_flow+footer, tools=[]),
+        PromptWithTools(prompt=header.format(return_instruction=with_tools_return_instruction)+method_structure+footer, tools=[ExtractMethodTool.get_description()]),
+        PromptWithTools(prompt=header.format(return_instruction=without_tools_return_instruction)+expression+footer, tools=[]),
+        PromptWithTools(prompt=header.format(return_instruction=without_tools_return_instruction)+type_documentation+footer, tools=[]),
+        PromptWithTools(prompt=header.format(return_instruction=with_tools_return_instruction)+naming+footer, tools=[MultiRenameTool.get_description()]),
+    ]
 
     def __init__(self, llm):
         self.llm = llm
@@ -59,16 +35,17 @@ class RefactoringGenerator:
     def generate_refactorings(self, code_segment: str, count: int, filepath: str, commit_history: list) -> List[Refactoring]:
 
         refactorings = []
-        for i in tqdm(range(count), desc="Generating refactorings"):
-            tools = [RenameTool.get_description(), ExtractMethodTool.get_description(), MultiRenameTool.get_description()] if i % 2 == 0 else []
-
+        for i in tqdm(range(len(self.prompts_with_tools)), desc="Generating refactorings"):
+            tools = self.prompts_with_tools[i].tools
             generator_llm = OpenAILLM(config=big_pickle_config, tools=tools)
-            return_message = self.return_with_tools if len(tools) > 0 else self.return_without_tools
-            prompt = self.prompt.format(code_segment=self.add_line_numbers(code_segment), commit_history=commit_history, return_message=return_message)
-            print(f"Generating with {len(tools)} tools. Prompt length: {len(prompt)} characters.")
+
+            prompt = self.prompts_with_tools[i].prompt.format(code_segment=self.add_line_numbers(code_segment), commit_history=commit_history)
             response = generator_llm.generate(prompt)
 
-            if response.text is not None:
+            if response.text is "NO_REFACTORING":
+                CLI.print_debug(f"No meaningful refactoring found for prompt {i + 1}.")
+                refactoring = None
+            elif response.text is not None:
                 refactoring = self.handle_string_response(response.text, code_segment, filepath)
             elif response.tool_call is not None:
                 refactoring = self.handle_tool_call_response(response.tool_call, filepath)
@@ -86,7 +63,7 @@ class RefactoringGenerator:
         except ValueError as e:
             CLI.print_debug(f"Failed to extract Python code from LLM response: {response}")
             return None
-        return FreeEditRefactoring(filepath, code_segment, refactored_code)
+        return Refactoring(filepath, code_segment, refactored_code)
     
     def handle_tool_call_response(self, tool_call: ToolCall, filepath: str) -> Refactoring|None:
         arguments = json.loads(tool_call.arguments)
