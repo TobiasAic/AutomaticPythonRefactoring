@@ -29,7 +29,7 @@ class MultiRenameTool:
                 "type": "function",
                 "function": {
                     "name": "multi_rename",
-                    "description": "Rename multiple local variables or attributes across one or more lines. Per rename operation give only one line number, the old name, and the new name. The tool will find all occurrences of the old name in the specified line and rename them to the new name.",
+                    "description": "Rename multiple local variables or attributes using one entry per scope. For each change, provide one line number where the identifier appears, the exact old name, and the new name. Do not add separate entries for every occurrence in the same scope. For example, if the code is number: 1: def build_path():\nnumber: 2:     base_dir = \"/tmp\"\nnumber: 3:     return base_dir, then call the tool with changes containing line_number 2, old_name base_dir, and new_name renamed_base_dir.",
                     "parameters": {
                     "type": "object",
                     "properties": {
@@ -41,11 +41,11 @@ class MultiRenameTool:
                             "properties": {
                             "line_number": {
                                 "type": "integer",
-                                "description": "Line number containing the identifier."
+                                "description": "Line number of one occurrence used to locate the scope."
                             },
                             "old_name": {
                                 "type": "string",
-                                "description": "Current identifier name."
+                                "description": "Exact current identifier name."
                             },
                             "new_name": {
                                 "type": "string",
