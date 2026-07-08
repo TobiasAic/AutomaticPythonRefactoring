@@ -35,12 +35,7 @@ class RefactoringEvaluator:
         self.llm = llm
 
     def evaluate(self, refactoring: Refactoring) -> Optional[RefactoringEvaluation]:
-        try: 
-            metrics_before = ReadabilityAnalyzer.analyze_code(refactoring.old_code)
-            metrics_after = ReadabilityAnalyzer.analyze_code(refactoring.new_code)
-            metric_improvements = metrics_before.get_string_improvements(metrics_after)
-        except Exception as e:
-            metric_improvements = f"Failed to analyze metrics. There might be an issue with the code. Error: {e}"
+        metric_improvements = self.get_metrics(refactoring)
 
         conventional_commits_specification = self.load_md_as_string("tree_of_thoughts/conventional_commits_specification.md")
         prompt = RefactoringEvaluator.prompt.format(
@@ -56,6 +51,37 @@ class RefactoringEvaluator:
         except ValueError as e:
             CLI.print_error(f"LLM did not return a valid evaluation: {response}")
             return None
+        
+    def batch_evaluate(self, refactorings: list[Refactoring]):
+        prompts = []
+        for refactoring in refactorings:
+            metric_improvements = self.get_metrics(refactoring)
+
+            conventional_commits_specification = self.load_md_as_string("tree_of_thoughts/conventional_commits_specification.md")
+            prompt = RefactoringEvaluator.prompt.format(
+                diff=refactoring.get_diff(),
+                conventional_commits_specification=conventional_commits_specification,
+                metric_improvements=metric_improvements
+            )
+            prompts.append(prompt)
+
+        llm_responses = self.llm.batch_generate(prompts)
+
+        for refactoring, response in zip(refactorings, llm_responses):
+            try: 
+                refactoring_evaluation = self.extract_evaluation(response)
+                refactoring.evaluation = refactoring_evaluation
+            except ValueError as e:
+                CLI.print_error(f"LLM did not return a valid evaluation: {response}")
+
+    def get_metrics(self, refactoring: Refactoring) -> str:
+        try: 
+            metrics_before = ReadabilityAnalyzer.analyze_code(refactoring.old_code)
+            metrics_after = ReadabilityAnalyzer.analyze_code(refactoring.new_code)
+            metric_improvements = metrics_before.get_string_improvements(metrics_after)
+        except Exception as e:
+            metric_improvements = f"Failed to analyze metrics. There might be an issue with the code. Error: {e}"
+        return metric_improvements
 
     def extract_evaluation(self, llm_response: LLMResponse) -> RefactoringEvaluation:
         try:

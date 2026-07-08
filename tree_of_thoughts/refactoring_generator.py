@@ -1,7 +1,5 @@
 from typing import List
-from openai.types.chat import ChatCompletionMessageFunctionToolCall 
 import json
-from tqdm import tqdm
 from dataclasses import dataclass
 
 from refactoring.multi_rename_refactoring import RenameArguments, MultiRenameTool
@@ -12,7 +10,8 @@ from llm.llm_types import ToolCall
 from utility.cli import CLI
 from llm.openai_llm import OpenAILLM
 from llm.llm_presets import big_pickle_config
-from tree_of_thoughts.generator_prompts import header, with_tools_return_instruction, without_tools_return_instruction, control_flow, footer, method_structure, expression, type_documentation, naming
+from tree_of_thoughts.generator_prompts import header, with_tools_return_instruction, without_tools_return_instruction, control_flow, method_structure, expression, type_documentation, naming
+from llm.llm import LLM
 
 @dataclass
 class PromptWithTools:
@@ -22,27 +21,38 @@ class PromptWithTools:
 
 class RefactoringGenerator:
     prompts_with_tools = [
-        PromptWithTools(prompt=header.format(return_instruction=without_tools_return_instruction)+control_flow+footer, tools=[]),
-        PromptWithTools(prompt=header.format(return_instruction=with_tools_return_instruction)+method_structure+footer, tools=[ExtractMethodTool.get_description()]),
-        PromptWithTools(prompt=header.format(return_instruction=without_tools_return_instruction)+expression+footer, tools=[]),
-        PromptWithTools(prompt=header.format(return_instruction=without_tools_return_instruction)+type_documentation+footer, tools=[]),
-        PromptWithTools(prompt=header.format(return_instruction=with_tools_return_instruction)+naming+footer, tools=[MultiRenameTool.get_description()]),
+        PromptWithTools(prompt=header+control_flow, tools=[]),
+        PromptWithTools(prompt=header+method_structure, tools=[ExtractMethodTool.get_description()]),
+        PromptWithTools(prompt=header+expression, tools=[]),
+        PromptWithTools(prompt=header+type_documentation, tools=[]),
+        PromptWithTools(prompt=header+naming, tools=[MultiRenameTool.get_description()]),
     ]
 
-    def __init__(self, llm):
+    def generate_llm_response(self, prompt_with_tools: PromptWithTools, code_segment: str, commit_history: list) -> object:
+        tools = prompt_with_tools.tools
+        generator_llm = OpenAILLM(config=big_pickle_config, tools=tools)
+
+        prompt = prompt_with_tools.prompt.format(
+            code_segment=self.add_line_numbers(code_segment),
+            commit_history=commit_history,
+        )
+        return generator_llm.generate(prompt)
+    
+    def __init__(self, llm: LLM):
         self.llm = llm
 
-    def generate_refactorings(self, code_segment: str, count: int, filepath: str, commit_history: list) -> List[Refactoring]:
+    def generate_refactorings(self, code_segment: str, filepath: str, commit_history: list) -> List[Refactoring]:
+        prompts = [prompt_with_tool.prompt.format(
+            code_segment=self.add_line_numbers(code_segment), 
+            commit_history=commit_history,
+            return_instruction=without_tools_return_instruction if not prompt_with_tool.tools else with_tools_return_instruction
+            ) for prompt_with_tool in self.prompts_with_tools]
+        tools = [prompt_with_tool.tools for prompt_with_tool in self.prompts_with_tools]
+        llm_responses = self.llm.batch_generate(prompts, tools)
 
         refactorings = []
-        for i in tqdm(range(len(self.prompts_with_tools)), desc="Generating refactorings"):
-            tools = self.prompts_with_tools[i].tools
-            generator_llm = OpenAILLM(config=big_pickle_config, tools=tools)
-
-            prompt = self.prompts_with_tools[i].prompt.format(code_segment=self.add_line_numbers(code_segment), commit_history=commit_history)
-            response = generator_llm.generate(prompt)
-
-            if response.text is "NO_REFACTORING":
+        for i, response in enumerate(llm_responses): 
+            if response.text == "NO_REFACTORING":
                 CLI.print_debug(f"No meaningful refactoring found for prompt {i + 1}.")
                 refactoring = None
             elif response.text is not None:

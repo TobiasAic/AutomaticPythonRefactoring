@@ -1,19 +1,21 @@
 from openai import OpenAI
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from tqdm import tqdm
 
+from llm.llm import LLM
 from llm.llm_types import OpenAILLMConfig, LLMResponse, ToolCall
 from utility.cli import CLI
 
-class OpenAILLM():
-    def __init__(self, config: OpenAILLMConfig, tools: list[dict] = []):
+class OpenAILLM(LLM):
+    def __init__(self, config: OpenAILLMConfig):
         self.model_name = config.model_name
         self.client = OpenAI(
             api_key=config.api_key,
             base_url=config.base_url,
         )
-        self.tools = tools
 
-    def generate(self, prompt: str) -> LLMResponse:
+    def generate(self, prompt: str, tools: list[dict] = []) -> LLMResponse:
         start_time = time.time()
 
         # This is the old API, because some models (like big-pickle) do not support the new one
@@ -22,7 +24,7 @@ class OpenAILLM():
             messages=[
                 {"role": "user", "content": prompt}
             ],
-            tools=self.tools,
+            tools=tools,
             tool_choice="auto"
         )
 
@@ -43,6 +45,27 @@ class OpenAILLM():
             text=response.choices[0].message.content,
             tool_call=None
         )
+    
+    def batch_generate(self, prompts: list[str], tools: list[list[dict]] = None) -> list[LLMResponse]:
+        if tools is None:
+            tools = [[] for _ in prompts]
+        elif len(tools) != len(prompts):
+            raise ValueError("Length of tools list must match length of prompts list.")
+
+        llm_responses = [None] * len(prompts)
+        with ThreadPoolExecutor(max_workers=len(prompts)) as executor:
+            futures = {
+                executor.submit(self.generate, prompt, tool): index
+                for index, (prompt, tool) in enumerate(zip(prompts, tools))
+            }
+
+            with tqdm(total=len(prompts), desc="LLM Responses", unit="responses") as progress_bar:
+                for future in as_completed(futures):
+                    index = futures[future]
+                    llm_responses[index] = future.result()
+                    progress_bar.update(1)
+        
+        return llm_responses
 
     def log_response_stats(self, response_time, response):
         prompt_tokens = response.usage.prompt_tokens

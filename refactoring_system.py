@@ -1,13 +1,10 @@
 from pathlib import Path
-from tqdm import tqdm
 import time
+from datetime import timedelta
 
 from git_repository import GitRepository
 from llm.openai_llm import OpenAILLM
-from llm.replay_llm import ReplayLLM, ReplayMode
 from llm.llm_presets import big_pickle_config
-from refactoring.rename_refactoring import RenameTool
-from refactoring.extract_method_refactoring import ExtractMethodTool
 from tree_of_thoughts.refactoring_generator import RefactoringGenerator 
 from tree_of_thoughts.refactoring_evaluator import RefactoringEvaluator
 from readability_analyzer import ReadabilityAnalyzer
@@ -21,9 +18,7 @@ class RefactoringSystem:
         self.config = config
 
         self.git_repository = GitRepository(config.get_absolute_git_repo_path())
-        # generator_llm = ReplayLLM(config=big_pickle_config, filepath="replays/generator_responses.json", tools=[RenameTool.get_description(), ExtractMethodTool.get_description()], mode=ReplayMode.REPLAY)
-        # evaluator_llm = ReplayLLM(config=big_pickle_config, filepath="replays/evaluator_responses.json", mode=ReplayMode.REPLAY)
-        generator_llm = OpenAILLM(config=big_pickle_config, tools=[RenameTool.get_description(), ExtractMethodTool.get_description()])
+        generator_llm = OpenAILLM(config=big_pickle_config)
         evaluator_llm = OpenAILLM(config=big_pickle_config)
         self.refactoring_generator = RefactoringGenerator(generator_llm)
         self.refactoring_evaluator = RefactoringEvaluator(evaluator_llm)
@@ -41,7 +36,7 @@ class RefactoringSystem:
 
         self.readability_analyzer.save(self.config.get_absolute_statistics_directory() + "/readability_metrics.json")
         CLI.print_debug(f"Saved readability metrics to {self.config.get_absolute_statistics_directory() + '/readability_metrics.json'}")
-        print(f"Finished refactoring in {time.time() - start} seconds")
+        print(f"Finished refactoring in {self.format_timespan(time.time() - start)}")
 
     def refactor_file(self, filepath: str):
         test_results = self.tester.test_before() # Run tests before starting the refactoring process to establish a baseline
@@ -50,17 +45,16 @@ class RefactoringSystem:
         CLI.print_banner(f"Starting refactoring for {Path(filepath).name}", symbol="=", empty_line_count=2)
 
         for iteration in range(self.config.max_iterations):
+            iteration_start = time.time()
             CLI.print_banner(f"Iteration {iteration + 1} - Current MI: {self.readability_analyzer.metrics[filepath][-1].maintainability_index}", symbol="-")
 
             with open(filepath, "r") as f:
                 code_segment = f.read()
 
             commit_history = self.git_repository.get_commit_history()
-            refactoring_suggestions = self.refactoring_generator.generate_refactorings(code_segment, count=2, filepath=filepath, commit_history=commit_history)
+            refactoring_suggestions = self.refactoring_generator.generate_refactorings(code_segment, filepath=filepath, commit_history=commit_history)
 
-            for refactoring in tqdm(refactoring_suggestions, desc="Evaluating refactorings"):
-                evaluation = self.refactoring_evaluator.evaluate(refactoring)
-                refactoring.evaluation = evaluation
+            self.refactoring_evaluator.batch_evaluate(refactoring_suggestions)
 
             sorted_refactorings = self.sort_refactorings_by_evaluation(refactoring_suggestions)
 
@@ -72,6 +66,8 @@ class RefactoringSystem:
                 self.apply_best_refactoring(filepath, sorted_refactorings)
 
             self.readability_analyzer.record_metrics(filepath)
+
+            print(f"Iteration {iteration + 1} completed in {self.format_timespan(time.time() - iteration_start)}")
 
     def print_refactorings(self, sorted_refactorings):
         for i, refactoring in enumerate(sorted_refactorings):
@@ -116,3 +112,6 @@ class RefactoringSystem:
             return False
         
         return True
+    
+    def format_timespan(self, seconds: float) -> str:
+        return str(timedelta(seconds=seconds))

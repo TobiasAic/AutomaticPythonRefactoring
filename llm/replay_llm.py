@@ -8,27 +8,30 @@ class ReplayMode(Enum):
     REPLAY = "replay"
 
 class ReplayLLM(OpenAILLM):
-    def __init__(self, config: OpenAILLMConfig, filepath: str, tools: list[dict] = [], mode: ReplayMode = ReplayMode.REPLAY):
-        super().__init__(config, tools)
+    def __init__(self, config: OpenAILLMConfig, filepath: str, mode: ReplayMode = ReplayMode.REPLAY):
+        super().__init__(config)
         self.responses = []
         self.mode = mode
         self.filepath = filepath
         if self.mode == ReplayMode.REPLAY:
             self.load_responses()
 
-    def generate(self, prompt: str) -> LLMResponse:
+    def generate(self, prompt: str, tools: list[dict] = []) -> LLMResponse:
         if self.mode == ReplayMode.REPLAY:
             return self.replay_last_response()
         else:
-            return self.generate_new_and_record(prompt) 
+            return self.generate_new_and_record(prompt, tools)
+        
+    def batch_generate(self, prompts: list[str], tools: list[list[dict]] = None) -> list[LLMResponse]:
+        raise NotImplementedError("Batch generation is not supported in ReplayLLM. Use generate() for individual prompts.")
         
     def replay_last_response(self) -> LLMResponse:
         if not self.responses:
             raise ValueError("No responses to replay")
         return self.responses.pop(0)
     
-    def generate_new_and_record(self, prompt: str) -> LLMResponse:
-        response = super().generate(prompt)
+    def generate_new_and_record(self, prompt: str, tools: list[dict] = []) -> LLMResponse:
+        response = super().generate(prompt, tools)
         self.responses.append(response)
         self.save_responses()
         return response
