@@ -52,6 +52,15 @@ class ReadabilityMetrics:
         print(f"Bugs: {self.halstead_bugs}")
         print(f"Maintainability Index (MI): {self.maintainability_index}")
 
+    def get_string_improvements(self, other: 'ReadabilityMetrics') -> str:
+        improvements = []
+        for field in self.__dataclass_fields__:
+            old_value = getattr(self, field)
+            new_value = getattr(other, field)
+            if old_value != new_value:
+                improvements.append(f"{field}: {old_value} -> {new_value}")
+        return "\n".join(improvements)
+
 class ReadabilityAnalyzer:
     def __init__(self):
         self.metrics = dict()
