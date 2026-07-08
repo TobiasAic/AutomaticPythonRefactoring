@@ -5,7 +5,7 @@ from llm.replay_llm import ReplayLLM, ReplayMode
 def test_replay_llm_records_saves_loads_and_replays(tmp_path, monkeypatch):
     expected_response = LLMResponse(text="hello")
 
-    def fake_generate(self, prompt):
+    def fake_generate(self, prompt, tools):
         return expected_response
 
     monkeypatch.setattr("llm.openai_llm.OpenAILLM.generate", fake_generate)
