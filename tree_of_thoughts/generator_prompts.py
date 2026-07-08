@@ -1,6 +1,9 @@
 header = """
 You are generating a refactoring candidate for a Python file to improve readability.
 
+This is the Python file to refactor:
+{code_segment}
+
 Find exactly one small refactoring from the category specified below.
 
 The refactoring must:
@@ -10,6 +13,9 @@ The refactoring must:
 - Avoid adding imports.
 - Avoid renaming functions, parameters, or classes.
 - Not repeat a refactoring already performed in the commit history.
+
+Commit history:
+{commit_history}
 
 {return_instruction}
 If no meaningful refactoring exists in this category, return "NO_REFACTORING".
@@ -109,12 +115,4 @@ Do not:
 - Rename attributes.
 - Rename variables where the existing name is already clear.
 - Perform cosmetic renaming with little readability benefit.
-"""
-
-footer = """
-Commit history:
-{commit_history}
-
-Python file to refactor:
-{code_segment}
 """
