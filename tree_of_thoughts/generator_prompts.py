@@ -106,8 +106,11 @@ Do not add imports. Only use types already available in the file.
 naming = """
 Category: Local variable naming
 
-Look only for bad local variable names. 
+Look only for bad local variable names.
 Variable names should snake_case, be descriptive, and avoid abbreviations.
+
+If several local variables in the same nearby block, function, or scope have weak names, prefer renaming them together in one MultiRename change instead of producing a single isolated rename.
+Only batch names when the renames are clearly related and improve readability as a group.
 
 Do not:
 - Rename function parameters.

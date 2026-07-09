@@ -29,7 +29,7 @@ class MultiRenameTool:
                 "type": "function",
                 "function": {
                     "name": "multi_rename",
-                    "description": "Rename multiple local variables or attributes using one entry per scope. For each change, provide one line number where the identifier appears, the exact old name, and the new name. Do not add separate entries for every occurrence in the same scope. For example, if the code is number: 1: def build_path():\nnumber: 2:     base_dir = \"/tmp\"\nnumber: 3:     return base_dir, then call the tool with changes containing line_number 2, old_name base_dir, and new_name renamed_base_dir.",
+                    "description": "Rename multiple local variables or attributes, especially when several weak names appear in the same nearby block, function, or scope. Use one entry per identifier: for each change, provide one line number where the identifier appears, the exact old name, and the new name. Do not add separate entries for every occurrence in the same scope. For example, if the code is number: 1: def build_path():\nnumber: 2:     base_dir = \"/tmp\"\nnumber: 3:     return base_dir, then call the tool with changes containing line_number 2, old_name base_dir, and new_name renamed_base_dir.",
                     "parameters": {
                     "type": "object",
                     "properties": {
