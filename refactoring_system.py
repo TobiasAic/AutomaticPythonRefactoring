@@ -1,6 +1,7 @@
 from pathlib import Path
 import time
 from datetime import timedelta
+import os
 
 from git_repository import GitRepository
 from llm.openai_llm import OpenAILLM
@@ -12,6 +13,7 @@ from config import Config
 from compiler import Compiler
 from tester.pytest_tester import PytestTester
 from utility.cli import CLI
+from refactoring.refactoring_storage import RefactoringStorage
 
 class RefactoringSystem:
     def __init__(self, config: Config):
@@ -24,6 +26,7 @@ class RefactoringSystem:
         self.refactoring_evaluator = RefactoringEvaluator(evaluator_llm)
         self.readability_analyzer = ReadabilityAnalyzer()
         self.tester = PytestTester(project_root=Path(config.get_absolute_test_root_path()), pyenv_name=config.pyenv_name)
+        self.refactoring_storage = RefactoringStorage(os.path.abspath("refactoring_collection/refactoring_ids.json"))
 
     def run(self):
         start = time.time()
@@ -55,6 +58,9 @@ class RefactoringSystem:
             refactoring_suggestions = self.refactoring_generator.generate_refactorings(code_segment, filepath=filepath, commit_history=commit_history)
 
             self.refactoring_evaluator.batch_evaluate(refactoring_suggestions)
+
+            for refactoring in refactoring_suggestions:
+                self.refactoring_storage.save_refactoring(refactoring)
 
             sorted_refactorings = self.sort_refactorings_by_evaluation(refactoring_suggestions)
 

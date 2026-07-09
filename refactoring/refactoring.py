@@ -32,3 +32,24 @@ class Refactoring:
     def write_file(self, filepath: str, content: str) -> None:
         with open(filepath, 'w') as file:
             file.write(content)
+
+    def to_dict(self) -> dict:
+        return {
+            "filepath": self.filepath,
+            "old_code": self.old_code,
+            "new_code": self.new_code,
+            "evaluation": self.evaluation.to_dict() if self.evaluation else None,
+            "commit_hash": self.commit_hash
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> 'Refactoring':
+        refactoring = cls(
+            filepath=data["filepath"],
+            old_code=data["old_code"],
+            new_code=data["new_code"]
+        )
+        if data.get("evaluation"):
+            refactoring.evaluation = RefactoringEvaluation.from_dict(data["evaluation"])
+        refactoring.commit_hash = data.get("commit_hash")
+        return refactoring

@@ -14,3 +14,18 @@ class RefactoringEvaluation:
         if not self.correct:
             return 0
         return self.grade
+    
+    def to_dict(self) -> dict:
+        return {
+            "description": self.description,
+            "correct": self.correct,
+            "grade": self.grade
+        }
+
+    @classmethod 
+    def from_dict(cls, data: dict) -> 'RefactoringEvaluation':
+        return cls(
+            description=data["description"],
+            correct=data["correct"],
+            grade=data["grade"]
+        )
