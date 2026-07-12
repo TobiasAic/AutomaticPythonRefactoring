@@ -19,7 +19,7 @@ for i in range(10):
     for refactoring in refactorings:
         if refactoring.commit_hash not in evaluations:
             print(f"Adding new evaluation for refactoring with commit_hash {refactoring.commit_hash}.")
-            evaluations[refactoring.commit_hash] = [refactoring.evaluation.to_dict()]
+            evaluations[refactoring.commit_hash] = []
         evaluations[refactoring.commit_hash].append(refactoring.evaluation.to_dict())
     print(f"Completed evaluation round {i + 1}")
 
