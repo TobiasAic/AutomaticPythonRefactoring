@@ -76,6 +76,9 @@ class OllamaLLM(LLM):
             for index, prompt, tool in batch:
                 llm_responses[index] = self.generate(client, prompt, tool)
 
+        print(f"Processing {len(prompts)} prompts using {len(self.clients)} clients...")
+        print(f"Batch sizes: {[len(batch) for batch in client_batches]}")
+
         with ThreadPoolExecutor(max_workers=len(self.clients)) as executor:
             futures = [
                 executor.submit(process_batch, client, batch)
