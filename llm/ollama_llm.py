@@ -1,8 +1,9 @@
 from typing import override
+from queue import Queue, Empty
 
 from openai import OpenAI
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
 
 from llm.llm import LLM
@@ -67,28 +68,35 @@ class OllamaLLM(LLM):
             raise ValueError("At least one Ollama client is required.")
 
         llm_responses = [None] * len(prompts)
+        jobs: Queue[tuple[int, str, list[dict]]] = Queue()
 
-        client_batches: list[list[tuple[int, str, list[dict]]]] = [[] for _ in self.clients]
         for index, (prompt, tool) in enumerate(zip(prompts, tools)):
-            client_batches[index % len(self.clients)].append((index, prompt, tool))
+            jobs.put((index, prompt, tool))
 
-        def process_batch(client, batch: list[tuple[int, str, list[dict]]]) -> None:
-            for index, prompt, tool in batch:
-                llm_responses[index] = self.generate(client, prompt, tool)
+        def process_jobs(client, progress_bar) -> None:
+            while True:
+                try:
+                    index, prompt, tool = jobs.get_nowait()
+                except Empty:
+                    return
+
+                try:
+                    llm_responses[index] = self.generate(client, prompt, tool)
+                finally:
+                    jobs.task_done()
+                    progress_bar.update(1)
 
         print(f"Processing {len(prompts)} prompts using {len(self.clients)} clients...")
-        print(f"Batch sizes: {[len(batch) for batch in client_batches]}")
+        print(f"Queue size: {jobs.qsize()}")
 
         with ThreadPoolExecutor(max_workers=len(self.clients)) as executor:
-            futures = [
-                executor.submit(process_batch, client, batch)
-                for client, batch in zip(self.clients, client_batches)
-                if batch
-            ]
-
             with tqdm(total=len(prompts), desc="LLM Responses", unit="responses") as progress_bar:
-                for future in as_completed(futures):
+                futures = [
+                    executor.submit(process_jobs, client, progress_bar)
+                    for client in self.clients
+                ]
+
+                for future in futures:
                     future.result()
-                    progress_bar.update(1)
         
         return llm_responses
