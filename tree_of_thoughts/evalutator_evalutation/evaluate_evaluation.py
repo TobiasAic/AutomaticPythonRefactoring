@@ -4,7 +4,7 @@ import json
 from refactoring.refactoring_storage import RefactoringStorage
 from llm.openai_llm import OpenAILLM
 from llm.llm_presets import big_pickle_config
-from tree_of_thoughts.refactoring_evaluator import RefactoringEvaluator
+from tree_of_thoughts.individual_refactoring_evaluator import IndividualRefactoringEvaluator
 
 refactoring_storage = RefactoringStorage(os.path.abspath("refactoring_collection/refactoring_ids.json"))
 refactorings = refactoring_storage.load_refactorings()
@@ -12,7 +12,7 @@ refactorings = refactoring_storage.load_refactorings()
 evaluations = {}
 
 evaluator_llm = OpenAILLM(config=big_pickle_config)
-refactoring_evaluator = RefactoringEvaluator(evaluator_llm)
+refactoring_evaluator = IndividualRefactoringEvaluator(evaluator_llm)
 
 for i in range(10):
     refactoring_evaluator.batch_evaluate(refactorings)
