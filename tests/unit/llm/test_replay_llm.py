@@ -15,9 +15,9 @@ def test_replay_llm_records_saves_loads_and_replays(tmp_path, monkeypatch):
 
     recording_llm = ReplayLLM(config, responses_file, mode=ReplayMode.RECORD)
     assert recording_llm.generate("ignored prompt") == expected_response
-    assert recording_llm.responses == [expected_response]
+    assert recording_llm.prompt_responses["ignored prompt"] == expected_response
     
     replay_llm = ReplayLLM(config, responses_file, mode=ReplayMode.REPLAY)
 
-    assert replay_llm.generate("another ignored prompt") == expected_response
-    assert replay_llm.responses == []
+    assert replay_llm.generate("ignored prompt") == expected_response
+    assert replay_llm.prompt_responses["ignored prompt"] == expected_response
