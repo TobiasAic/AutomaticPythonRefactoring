@@ -37,4 +37,7 @@ venv/
 
 # Replays
 replays/
+
 refactoring_collection/
+
+.VSCodeCounter/
