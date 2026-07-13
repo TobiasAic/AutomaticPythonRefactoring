@@ -5,6 +5,7 @@ import os
 
 from utility.git_repository import GitRepository
 from llm.openai_llm import OpenAILLM
+from llm.replay_llm import ReplayLLM, ReplayMode
 from llm.llm_presets import big_pickle_config
 from tree_of_thoughts.refactoring_generator import RefactoringGenerator 
 from tree_of_thoughts.individual_refactoring_evaluator import IndividualRefactoringEvaluator
@@ -20,8 +21,8 @@ class RefactoringSystem:
         self.config = config
 
         self.git_repository = GitRepository(config.get_absolute_git_repo_path())
-        generator_llm = OpenAILLM(config=big_pickle_config)
-        evaluator_llm = OpenAILLM(config=big_pickle_config)
+        generator_llm = ReplayLLM(config=big_pickle_config, filepath="replays/new_generator.json", mode=ReplayMode.REPLAY)
+        evaluator_llm = ReplayLLM(config=big_pickle_config, filepath="replays/new_evaluator.json", mode=ReplayMode.REPLAY)
         self.refactoring_generator = RefactoringGenerator(generator_llm)
         self.refactoring_evaluator = IndividualRefactoringEvaluator(evaluator_llm)
         self.readability_analyzer = ReadabilityAnalyzer()
