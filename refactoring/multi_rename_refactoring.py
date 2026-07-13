@@ -5,6 +5,7 @@ from rope.refactor.rename import Rename
 from utility.cli import CLI
 from refactoring.rope_refactoring import RopeRefactoring
 from refactoring.rename_shared import RenameArguments, calculate_offset
+from refactoring.refactoring_tool import RefactoringTool
 
 class MultiRenameRefactoring(RopeRefactoring[list[RenameArguments]]):
     def execute_rope_refactoring(self, project: Project, filepath: str, refactoring_arguments: list[RenameArguments]) -> None:
@@ -22,7 +23,7 @@ class MultiRenameRefactoring(RopeRefactoring[list[RenameArguments]]):
             changes = rename.get_changes(argument.new_name)
             project.do(changes)
 
-class MultiRenameTool:
+class MultiRenameTool(RefactoringTool):
     @staticmethod
     def get_description() -> dict:
         return {
@@ -63,7 +64,14 @@ class MultiRenameTool:
                 }
                 }
 
-    def call(filepath: str, rename_arguments: list[RenameArguments]) -> MultiRenameRefactoring:
+    def call(filepath: str, arguments: dict) -> MultiRenameRefactoring:
+        changes = arguments.get("changes", [])
+        rename_arguments = []
+        for change in changes:
+            line_number = int(change.get("line_number"))
+            old_name = change.get("old_name")
+            new_name = change.get("new_name")
+            rename_arguments.append(RenameArguments(line_number=line_number, old_name=old_name, new_name=new_name))
         try:
             return MultiRenameRefactoring(filepath, rename_arguments)
         except Exception as e:

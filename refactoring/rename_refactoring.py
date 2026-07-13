@@ -5,6 +5,7 @@ from rope.base import libutils
 from rope.refactor.rename import Rename
 from utility.cli import CLI
 from refactoring.rename_shared import RenameArguments, calculate_offset
+from refactoring.refactoring_tool import RefactoringTool
 
 class RenameRefactoring(RopeRefactoring[RenameArguments]):
     def execute_rope_refactoring(self, project, filepath, refactoring_arguments: RenameArguments):
@@ -15,7 +16,7 @@ class RenameRefactoring(RopeRefactoring[RenameArguments]):
         changes = rename.get_changes(refactoring_arguments.new_name)
         project.do(changes)
 
-class RenameTool:
+class RenameTool(RefactoringTool):
     @staticmethod
     def get_description() -> dict:
         return {
@@ -45,7 +46,10 @@ class RenameTool:
         },
     }
 
-    def call(filepath: str, line_number: int, old_name: str, new_name: str) -> RenameRefactoring:
+    def call(filepath: str, arguments: dict) -> RenameRefactoring:
+        line_number = int(arguments.get("line_number"))
+        old_name = arguments.get("old_name")
+        new_name = arguments.get("new_name")
         try:
             return RenameRefactoring(filepath, RenameArguments(line_number=line_number, old_name=old_name, new_name=new_name))
         except Exception as e:

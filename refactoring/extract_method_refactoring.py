@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from refactoring.rope_refactoring import RopeRefactoring
 from utility.cli import CLI
+from refactoring.refactoring_tool import RefactoringTool
 
 @dataclass
 class ExtractMethodArguments:
@@ -21,7 +22,7 @@ class ExtractMethodRefactoring(RopeRefactoring):
         changes = extract_method.get_changes(refactoring_arguments.new_name)
         project.do(changes)
 
-class ExtractMethodTool:
+class ExtractMethodTool(RefactoringTool):
     @staticmethod
     def get_description() -> dict:
         return {
@@ -51,7 +52,10 @@ class ExtractMethodTool:
         },
     }
 
-    def call(filepath: str, start_line: int, end_line: int, new_name: str) -> ExtractMethodRefactoring:
+    def call(filepath: str, arguments: dict) -> ExtractMethodRefactoring:
+        start_line = int(arguments.get("start_line"))
+        end_line = int(arguments.get("end_line"))
+        new_name = arguments.get("new_name")
         try:
             return ExtractMethodRefactoring(filepath, ExtractMethodArguments(start_line=start_line, end_line=end_line, new_name=new_name))
         except Exception as e:
