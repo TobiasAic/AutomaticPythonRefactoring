@@ -1,13 +1,7 @@
 openai
-keyboard
 rope
 radon
-pandas
-scipy
 matplotlib
-nbformat
-libcst
-PyQt5
 pytest
 python-dotenv
 GitPython
