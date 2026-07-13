@@ -7,7 +7,7 @@ from git_repository import GitRepository
 from llm.openai_llm import OpenAILLM
 from llm.llm_presets import big_pickle_config
 from tree_of_thoughts.refactoring_generator import RefactoringGenerator 
-from tree_of_thoughts.refactoring_evaluator import RefactoringEvaluator
+from tree_of_thoughts.individual_refactoring_evaluator import IndividualRefactoringEvaluator
 from readability_analyzer import ReadabilityAnalyzer
 from config import Config
 from compiler import Compiler
@@ -23,7 +23,7 @@ class RefactoringSystem:
         generator_llm = OpenAILLM(config=big_pickle_config)
         evaluator_llm = OpenAILLM(config=big_pickle_config)
         self.refactoring_generator = RefactoringGenerator(generator_llm)
-        self.refactoring_evaluator = RefactoringEvaluator(evaluator_llm)
+        self.refactoring_evaluator = IndividualRefactoringEvaluator(evaluator_llm)
         self.readability_analyzer = ReadabilityAnalyzer()
         self.tester = PytestTester(project_root=Path(config.get_absolute_test_root_path()), pyenv_name=config.pyenv_name)
         self.refactoring_storage = RefactoringStorage(os.path.abspath("refactoring_collection/refactoring_ids.json"))

@@ -8,7 +8,7 @@ from llm.llm_types import LLMResponse
 from utility.cli import CLI
 from readability_analyzer import ReadabilityAnalyzer
 
-class RefactoringEvaluator:
+class IndividualRefactoringEvaluator:
     prompt = """
     Your job is to review a refactoring of a piece of Python code based on the code diff provided. 
     Your answer must be a JSON object with the following format:
@@ -38,7 +38,7 @@ class RefactoringEvaluator:
         metric_improvements = self.get_metrics(refactoring)
 
         conventional_commits_specification = self.load_md_as_string("tree_of_thoughts/conventional_commits_specification.md")
-        prompt = RefactoringEvaluator.prompt.format(
+        prompt = IndividualRefactoringEvaluator.prompt.format(
             diff=refactoring.get_diff(),
             conventional_commits_specification=conventional_commits_specification,
             metric_improvements=metric_improvements
@@ -58,7 +58,7 @@ class RefactoringEvaluator:
             metric_improvements = self.get_metrics(refactoring)
 
             conventional_commits_specification = self.load_md_as_string("tree_of_thoughts/conventional_commits_specification.md")
-            prompt = RefactoringEvaluator.prompt.format(
+            prompt = IndividualRefactoringEvaluator.prompt.format(
                 diff=refactoring.get_diff(),
                 conventional_commits_specification=conventional_commits_specification,
                 metric_improvements=metric_improvements
