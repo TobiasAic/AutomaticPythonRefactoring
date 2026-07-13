@@ -3,15 +3,15 @@ import time
 from datetime import timedelta
 import os
 
-from git_repository import GitRepository
+from utility.git_repository import GitRepository
 from llm.openai_llm import OpenAILLM
 from llm.llm_presets import big_pickle_config
 from tree_of_thoughts.refactoring_generator import RefactoringGenerator 
 from tree_of_thoughts.individual_refactoring_evaluator import IndividualRefactoringEvaluator
-from readability_analyzer import ReadabilityAnalyzer
-from config import Config
-from compiler import Compiler
-from tester.pytest_tester import PytestTester
+from utility.readability_analyzer import ReadabilityAnalyzer
+from utility.config import Config
+from utility.compiler import Compiler
+from utility.pytest_tester import PytestTester
 from utility.cli import CLI
 from refactoring.refactoring_storage import RefactoringStorage
 

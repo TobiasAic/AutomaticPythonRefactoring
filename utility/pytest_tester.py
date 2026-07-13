@@ -1,4 +1,4 @@
-from tester.tester import Tester
+from utility.tester import Tester
 import os
 import subprocess
 from pytest import ExitCode

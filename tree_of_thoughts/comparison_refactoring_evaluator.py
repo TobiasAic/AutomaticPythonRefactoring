@@ -5,7 +5,7 @@ from refactoring.refactoring_evaluation import RefactoringEvaluation
 from llm.openai_llm import OpenAILLM
 from llm.llm_types import LLMResponse
 from utility.cli import CLI
-from readability_analyzer import ReadabilityAnalyzer
+from utility.readability_analyzer import ReadabilityAnalyzer
 
 class ComparisonRefactoringEvaluator:
     prompt = """

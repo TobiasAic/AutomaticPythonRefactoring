@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
 
-from config import load_from_toml
+from utility.config import load_from_toml
 from refactoring_system import RefactoringSystem
 from utility.cli import CLI
 
