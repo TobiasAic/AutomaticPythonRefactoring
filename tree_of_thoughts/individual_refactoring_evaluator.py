@@ -8,8 +8,9 @@ from llm.llm_types import LLMResponse
 from utility.cli import CLI
 from utility.readability_analyzer import ReadabilityAnalyzer
 from tree_of_thoughts.conventional_commits_specification import conventional_commits_specification
+from tree_of_thoughts.refactoring_evaluator import RefactoringEvaluator
 
-class IndividualRefactoringEvaluator:
+class IndividualRefactoringEvaluator(RefactoringEvaluator):
     prompt = """
     Your job is to review a refactoring of a piece of Python code based on the code diff provided. 
     Your answer must be a JSON object with the following format:
@@ -31,9 +32,6 @@ class IndividualRefactoringEvaluator:
     Here is the diff of the refactoring to review:
     {diff}
     """
-
-    def __init__(self, llm: OpenAILLM):
-        self.llm = llm
 
     def evaluate(self, refactoring: Refactoring) -> Optional[RefactoringEvaluation]:
         metric_improvements = self.get_metrics(refactoring)
@@ -73,33 +71,3 @@ class IndividualRefactoringEvaluator:
                 refactoring.evaluation = refactoring_evaluation
             except ValueError as e:
                 CLI.print_error(f"LLM did not return a valid evaluation: {response}")
-
-    def get_metrics(self, refactoring: Refactoring) -> str:
-        try: 
-            metrics_before = ReadabilityAnalyzer.analyze_code(refactoring.old_code)
-            metrics_after = ReadabilityAnalyzer.analyze_code(refactoring.new_code)
-            metric_improvements = metrics_before.get_string_improvements(metrics_after)
-        except Exception as e:
-            metric_improvements = f"Failed to analyze metrics. There might be an issue with the code. Error: {e}"
-        return metric_improvements
-
-    def extract_evaluation(self, llm_response: LLMResponse) -> RefactoringEvaluation:
-        try:
-            if llm_response.text is None:
-                raise ValueError("LLM response does not contain text content.")
-            data = json.loads(llm_response.text)
-        except json.JSONDecodeError:
-            raise ValueError("LLM response is not a valid JSON object.")
-
-        if not all(key in data for key in ["commit_message", "correct", "grade"]):
-            raise ValueError("LLM response JSON object is missing required fields.")
-
-        return RefactoringEvaluation(
-            description=data["commit_message"],
-            correct=data["correct"],
-            grade=data["grade"]
-        )
-    
-    def load_md_as_string(self, filepath: str) -> str:
-        with open(filepath, "r") as f:
-            return f.read()
