@@ -28,11 +28,11 @@ class Refactoring:
 
     def execute(self) -> None:
         """ Execute the refactoring on the Python file. """
-        self.__write_file(self.filepath, self.new_code)
+        self.write_file(self.filepath, self.new_code)
 
     def revert(self) -> None:
         """ Revert the refactoring on the Python file. """
-        self.__write_file(self.filepath, self.old_code)
+        self.write_file(self.filepath, self.old_code)
 
     def set_evaluation(self, evaluation: RefactoringEvaluation) -> None:
         """ Set the evaluation for the refactoring. """
@@ -59,7 +59,13 @@ class Refactoring:
         refactoring.commit_hash = data.get("commit_hash")
         return refactoring
     
-    def __write_file(self, filepath: str, content: str) -> None:
+    def write_file(self, filepath: str, content: str) -> None:
+        """Writes the given content to the specified file.
+
+        Args:
+            filepath (str): The path to the file to write the content to. 
+            content (str): The content to write to the file.
+        """
         with open(filepath, 'w') as file:
             file.write(content)
 

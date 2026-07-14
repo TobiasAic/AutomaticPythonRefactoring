@@ -19,7 +19,7 @@ class RopeRefactoring[RopeRefactoringArguments](Refactoring):
         project.close()
 
         new_code = self.__read_file(filepath)
-        self.__write_file(filepath, old_code)
+        self.write_file(filepath, old_code)
 
         super().__init__(filepath, old_code, new_code)
 
