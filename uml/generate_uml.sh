@@ -10,10 +10,6 @@ fi
 
 mkdir -p uml
 
-# Package overview
-pyreverse -k -o svg -p Project .
-mv packages_Project.svg uml/package_overview.svg
-
 # Class diagrams
 for pkg in llm refactoring tree_of_thoughts utility; do
     pyreverse -o svg -p $pkg $pkg
