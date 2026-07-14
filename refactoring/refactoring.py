@@ -3,6 +3,7 @@ import difflib
 from refactoring.refactoring_evaluation import RefactoringEvaluation 
 
 class Refactoring:
+    """ Base class representing a refactoring operation."""
     def __init__(self, filepath: str, old_code: str, new_code: str):
         self.filepath = filepath
         self.old_code = old_code
@@ -11,6 +12,11 @@ class Refactoring:
         self.commit_hash: str = None
 
     def get_diff(self) -> str:
+        """Returns a unified diff between the old and new code.
+
+        Returns:
+            str: A string representing the diff between the old and new code. 
+        """        
         diff = difflib.unified_diff(
             self.old_code.splitlines(),
             self.new_code.splitlines(),
@@ -21,17 +27,16 @@ class Refactoring:
         return '\n'.join(diff)
 
     def execute(self) -> None:
-        self.write_file(self.filepath, self.new_code)
+        """ Execute the refactoring on the Python file. """
+        self.__write_file(self.filepath, self.new_code)
 
     def revert(self) -> None:
-        self.write_file(self.filepath, self.old_code)
+        """ Revert the refactoring on the Python file. """
+        self.__write_file(self.filepath, self.old_code)
 
     def set_evaluation(self, evaluation: RefactoringEvaluation) -> None:
+        """ Set the evaluation for the refactoring. """
         self.evaluation = evaluation
-
-    def write_file(self, filepath: str, content: str) -> None:
-        with open(filepath, 'w') as file:
-            file.write(content)
 
     def to_dict(self) -> dict:
         return {
@@ -53,3 +58,8 @@ class Refactoring:
             refactoring.evaluation = RefactoringEvaluation.from_dict(data["evaluation"])
         refactoring.commit_hash = data.get("commit_hash")
         return refactoring
+    
+    def __write_file(self, filepath: str, content: str) -> None:
+        with open(filepath, 'w') as file:
+            file.write(content)
+

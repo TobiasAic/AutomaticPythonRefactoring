@@ -1,6 +1,5 @@
-import os
-
 from refactoring.rope_refactoring import RopeRefactoring
+from rope.base.project import Project
 from rope.base import libutils
 from rope.refactor.rename import Rename
 from utility.cli import CLI
@@ -8,8 +7,14 @@ from refactoring.rename_shared import RenameArguments, calculate_offset
 from refactoring.refactoring_tool import RefactoringTool
 
 class RenameRefactoring(RopeRefactoring[RenameArguments]):
-    def execute_rope_refactoring(self, project, filepath, refactoring_arguments: RenameArguments):
+    def execute_rope_refactoring(self, project: Project, filepath: str, refactoring_arguments: RenameArguments):
+        """Execute the Rename refactoring with Rope
 
+        Args:
+            project (Project): The Rope project instance.
+            filepath (str): The path to the file containing the code to refactor.
+            refactoring_arguments (RenameArguments): The arguments for the rename refactoring.
+        """
         resource = libutils.path_to_resource(project, filepath)
         offset = calculate_offset(filepath, refactoring_arguments.line_number, refactoring_arguments.old_name)
         rename = Rename(project, resource, offset)
@@ -19,6 +24,7 @@ class RenameRefactoring(RopeRefactoring[RenameArguments]):
 class RenameTool(RefactoringTool):
     @staticmethod
     def get_description() -> dict:
+        """ Returns the description of the Rename tool for the LLM. """
         return {
         "type": "function",
         "function": {
@@ -47,6 +53,7 @@ class RenameTool(RefactoringTool):
     }
 
     def call(filepath: str, arguments: dict) -> RenameRefactoring:
+        """ Calls the Rename refactoring with the given arguments from the LLM. """
         line_number = int(arguments.get("line_number"))
         old_name = arguments.get("old_name")
         new_name = arguments.get("new_name")

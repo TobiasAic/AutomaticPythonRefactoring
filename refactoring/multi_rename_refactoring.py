@@ -1,3 +1,4 @@
+""" This file contains the implementation of the Multi Rename refactoring and a corresponding tool for an LLM to call. """
 from rope.base.project import Project
 from rope.base import libutils
 from rope.refactor.rename import Rename
@@ -9,6 +10,13 @@ from refactoring.refactoring_tool import RefactoringTool
 
 class MultiRenameRefactoring(RopeRefactoring[list[RenameArguments]]):
     def execute_rope_refactoring(self, project: Project, filepath: str, refactoring_arguments: list[RenameArguments]) -> None:
+        """Execute the multi rename refactoring using Rope.
+
+        Args:
+            project (Project): The Rope project instance. 
+            filepath (str): The path to the file containing the code to refactor.
+            refactoring_arguments (list[RenameArguments]): The arguments for the multi rename refactoring.
+        """
         for argument in refactoring_arguments:
             resource = libutils.path_to_resource(project, filepath)
 
@@ -26,6 +34,7 @@ class MultiRenameRefactoring(RopeRefactoring[list[RenameArguments]]):
 class MultiRenameTool(RefactoringTool):
     @staticmethod
     def get_description() -> dict:
+        """ Returns the description of the Multi Rename tool for the LLM. """
         return {
                 "type": "function",
                 "function": {
@@ -65,6 +74,7 @@ class MultiRenameTool(RefactoringTool):
                 }
 
     def call(filepath: str, arguments: dict) -> MultiRenameRefactoring:
+        """ Calls the Multi Rename refactoring with the given arguments from the LLM. """
         changes = arguments.get("changes", [])
         rename_arguments = []
         for change in changes:

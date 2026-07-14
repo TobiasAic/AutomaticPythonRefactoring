@@ -5,11 +5,17 @@ import json
 from refactoring.refactoring import Refactoring
 
 class RefactoringStorage:
+    """ Allows to store and load refactorings. """
     def __init__(self, filepath: str):
         self.filepath = filepath
         os.makedirs(os.path.dirname(self.filepath), exist_ok=True)
 
     def save_refactoring(self, refactoring: Refactoring) -> None:
+        """ Add a refactoring to the stored refactorings and save it to a separate file.
+
+        Args:
+            refactoring (Refactoring): The refactoring to save.
+        """
         refactoring_id = str(uuid.uuid4())
         refactoring.commit_id = refactoring_id
         dir_path = os.path.dirname(self.filepath)
@@ -30,6 +36,11 @@ class RefactoringStorage:
             json.dump(refactoring_ids, file, indent=4)
 
     def load_refactorings(self) -> list[Refactoring]:
+        """Load all refactorings from storage.
+
+        Returns:
+            list[Refactoring]: A list of all loaded refactorings.
+        """        
         refactorings = []
         if os.path.exists(self.filepath):
             with open(self.filepath, 'r') as file:

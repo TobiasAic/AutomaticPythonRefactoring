@@ -2,17 +2,20 @@ from dataclasses import dataclass
 
 @dataclass
 class RefactoringEvaluation:
+    """ Represents the evaluation given by the LLM for a refactoring operation. """
     description: str
     correct: bool
     grade: int
 
     def __post_init__(self):
+        """ Ensure that the grade is an integer between 0 and 10."""
         if not (0 <= self.grade <= 10):
             raise ValueError("Grade must be an integer between 0 and 10.")
         
     def sorting_value(self) -> int:
+        """ Sort incorrect evaluations to the end of the list, and correct evaluations by their grade. """
         if not self.correct:
-            return 0
+            return -1
         return self.grade
     
     def to_dict(self) -> dict:
