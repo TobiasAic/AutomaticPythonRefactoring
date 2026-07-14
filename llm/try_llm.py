@@ -1,3 +1,5 @@
+""" Little script to test the LLM implementations and LLM availability. """
+
 from llm.openai_llm import OpenAILLM
 from llm.llm_presets import big_pickle_config, qwen3_5_2b_config
 
@@ -20,8 +22,8 @@ if __name__ == "__main__":
         },
     }
 
-    llm = OpenAILLM(config=big_pickle_config, tools=[weather_tool])
+    llm = OpenAILLM(config=big_pickle_config)
     prompt = "What is the weather like in New York City?"
-    response = llm.generate(prompt)
+    response = llm.generate(prompt, tools=[weather_tool])
     print(response)
 

@@ -1,4 +1,6 @@
 #!/bin/bash
+# This is a SLURM batch script to start multiple Ollama servers on different GPUs and ports.
+# It works in tandem with the ollama_llm.py class to provide concurrent LLM responses.
 #SBATCH --job-name=ollama
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:4

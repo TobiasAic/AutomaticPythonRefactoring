@@ -1,18 +1,23 @@
+""" Types and data structures used in the LLM module. """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 import json
 from typing import Any
 
+
 @dataclass
-class OpenAILLMConfig:
+class LLMConfig:
+    """ Represents the configuration to access an LLM at a specific endpoint. """
     api_key: str
     base_url: str
     model_name: str
 
+
 @dataclass
 class LLMResponse:
-    """Represents a response from the LLM, including the generated content and any tool calls."""
+    """ Represents a response from the LLM, including the generated content and any tool calls. """
     text: str | None = None
     tool_call: ToolCall | None = None
 

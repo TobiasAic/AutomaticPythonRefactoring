@@ -1,4 +1,4 @@
-from llm.llm_types import LLMResponse, OpenAILLMConfig
+from llm.llm_types import LLMResponse, LLMConfig
 from llm.replay_llm import ReplayLLM, ReplayMode
 
 
@@ -10,7 +10,7 @@ def test_replay_llm_records_saves_loads_and_replays(tmp_path, monkeypatch):
 
     monkeypatch.setattr("llm.openai_llm.OpenAILLM.generate", fake_generate)
 
-    config = OpenAILLMConfig(api_key="test-key", base_url="http://localhost", model_name="test-model")
+    config = LLMConfig(api_key="test-key", base_url="http://localhost", model_name="test-model")
     responses_file = tmp_path / "responses.json"
 
     recording_llm = ReplayLLM(config, responses_file, mode=ReplayMode.RECORD)
