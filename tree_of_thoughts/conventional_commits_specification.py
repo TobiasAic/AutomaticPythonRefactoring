@@ -1,3 +1,8 @@
+"""
+This is the Conventional Commit Specification as of 06.07.2026 (https://www.conventionalcommits.org/en/v1.0.0/#specification) modified with a few ideas from https://cbea.ms/git-commit/ as of 06.07.2026.
+"""
+
+conventional_commits_specification="""
 # Specification
 
 The key words “MUST”, “MUST NOT”, “REQUIRED”, “SHALL”, “SHALL NOT”, “SHOULD”, “SHOULD NOT”, “RECOMMENDED”, “MAY”, and “OPTIONAL” in this document are to be interpreted as described in RFC 2119.
@@ -18,3 +23,4 @@ The key words “MUST”, “MUST NOT”, “REQUIRED”, “SHALL”, “SHALL 
 14. Types other than feat and fix MAY be used in your commit messages, e.g., docs: update ref docs.
 15. The units of information that make up Conventional Commits MUST NOT be treated as case-sensitive by implementors, with the exception of BREAKING CHANGE which MUST be uppercase.
 16. BREAKING-CHANGE MUST be synonymous with BREAKING CHANGE, when used as a token in a footer.
+"""

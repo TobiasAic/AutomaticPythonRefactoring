@@ -1,1 +1,0 @@
-The conventional_commit_specification.md contains the Conventional Commit Specification as of 06.07.2026 (https://www.conventionalcommits.org/en/v1.0.0/#specification) modified with a few ideas from https://cbea.ms/git-commit/ as of 06.07.2026.

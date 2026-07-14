@@ -6,6 +6,7 @@ from llm.openai_llm import OpenAILLM
 from llm.llm_types import LLMResponse
 from utility.cli import CLI
 from utility.readability_analyzer import ReadabilityAnalyzer
+from tree_of_thoughts.conventional_commits_specification import conventional_commits_specification
 
 class ComparisonRefactoringEvaluator:
     prompt = """
@@ -47,7 +48,6 @@ class ComparisonRefactoringEvaluator:
         metric_improvements = [self.get_metrics(refactoring) for refactoring in refactorings]
         refactorings_with_ids = [{"refactoring_id": i, "refactoring": refactoring} for i, refactoring in enumerate(refactorings)]
         refactoring_dict = [{"refactoring_id": i,"diff": refactoring.get_diff(), "metrics": metric} for i, (refactoring, metric) in enumerate(zip(refactorings, metric_improvements))]
-        conventional_commits_specification = self.load_md_as_string("tree_of_thoughts/conventional_commits_specification.md")
 
         prompt = ComparisonRefactoringEvaluator.prompt.format(
             number_of_refactorings=len(refactorings),

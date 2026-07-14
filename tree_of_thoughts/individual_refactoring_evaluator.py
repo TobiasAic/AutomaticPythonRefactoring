@@ -7,6 +7,7 @@ from llm.openai_llm import OpenAILLM
 from llm.llm_types import LLMResponse
 from utility.cli import CLI
 from utility.readability_analyzer import ReadabilityAnalyzer
+from tree_of_thoughts.conventional_commits_specification import conventional_commits_specification
 
 class IndividualRefactoringEvaluator:
     prompt = """
@@ -37,7 +38,6 @@ class IndividualRefactoringEvaluator:
     def evaluate(self, refactoring: Refactoring) -> Optional[RefactoringEvaluation]:
         metric_improvements = self.get_metrics(refactoring)
 
-        conventional_commits_specification = self.load_md_as_string("tree_of_thoughts/conventional_commits_specification.md")
         prompt = IndividualRefactoringEvaluator.prompt.format(
             diff=refactoring.get_diff(),
             conventional_commits_specification=conventional_commits_specification,
