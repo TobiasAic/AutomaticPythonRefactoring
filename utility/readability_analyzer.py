@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 
 @dataclass
 class ReadabilityMetrics:
+    """ Represents the readability metrics for a piece of code. """
     cyclomatic_complexity: int
     loc: int
     lloc: int
@@ -53,6 +54,14 @@ class ReadabilityMetrics:
         print(f"Maintainability Index (MI): {self.maintainability_index}")
 
     def get_string_improvements(self, other: 'ReadabilityMetrics') -> str:
+        """Generate a string showing every metric compared to the passed metrics.
+
+        Args:
+            other (ReadabilityMetrics): The other ReadabilityMetrics object to compare against. 
+
+        Returns:
+            str: A string showing the changes in each metric.
+        """
         improvements = []
         for field in self.__dataclass_fields__:
             old_value = getattr(self, field)
@@ -66,18 +75,38 @@ class ReadabilityAnalyzer:
         self.metrics = dict()
 
     def record_metrics(self, filepath: str):
+        """Analyze the metrics for a file and save them
+
+        Args:
+            filepath (str): The path to the file to analyze.
+        """
         metrics = ReadabilityAnalyzer.analyze_file(filepath)
         if self.metrics.get(filepath) is None:
             self.metrics[filepath] = []
         self.metrics[filepath].append(metrics)
 
     def analyze_file(filepath: str) -> ReadabilityMetrics:
+        """Analyze the metrics for a file
+
+        Args:
+            filepath (str): The path to the file to analyze.
+
+        Returns:
+            ReadabilityMetrics: The readability metrics for the file.
+        """
         code = ""
         with open(filepath, 'r') as file:
             code = file.read()
         return ReadabilityAnalyzer.analyze_code(code)
 
     def analyze_code(code: str) -> ReadabilityMetrics:
+        """Analyze the metrics for a piece of code
+        Args:
+            code (str): The code to analyze.
+
+        Returns:
+            ReadabilityMetrics: The readability metrics for the code.
+        """
         # Get Cyclomatic Complexity results
         cc_results = cc_visit(code)
         # Get raw metrics (including LOC)
@@ -112,6 +141,11 @@ class ReadabilityAnalyzer:
         )
     
     def save(self, filepath: str):
+        """Save the recorded metrics under the specified path
+
+        Args:
+            filepath (str): The path where the metrics should be saved.
+        """
         with open(filepath, 'w') as file:
             serializable_metrics = {
                 path: [asdict(metric) for metric in metrics_list]
@@ -120,6 +154,11 @@ class ReadabilityAnalyzer:
             json.dump(serializable_metrics, file)
 
     def load(self, filepath: str):
+        """Load the metrics from the specified path
+
+        Args:
+            filepath (str): The path from which to load the metrics.
+        """
         with open(filepath, 'r') as file:
             loaded_metrics = json.load(file)
 
@@ -129,16 +168,22 @@ class ReadabilityAnalyzer:
         }
 
     def plot_percentage_change(self, filepath: str, output_path: str = None):
+        """Plot the changes of the metrics in percent for a specified file
+
+        Args:
+            filepath (str): The path of the file for which to plot metrics.
+            output_path (str, optional): The path where the plot should be saved. Defaults to None.
+        """
         if len(self.metrics[filepath]) < 2:
             print("Not enough data to plot percentage change.")
             return
         
         figure, axes = plt.subplots(4, 1, sharex=True, figsize=(12, 14))
 
-        self.plot_metric_group(filepath, ['cyclomatic_complexity', 'maintainability_index'], axes[0]) 
-        self.plot_metric_group(filepath, ['loc', 'lloc', 'sloc', 'comments', 'comment_blocks', 'blank_lines', 'single_comments'], axes[1])
-        self.plot_metric_group(filepath, ['halstead_h1', 'halstead_h2', 'halstead_n1', 'halstead_n2'], axes[2])
-        self.plot_metric_group(filepath, ['halstead_vocabulary', 'halstead_length', 'halstead_calculated_length', 'halstead_volume', 'halstead_difficulty', 'halstead_effort', 'halstead_time', 'halstead_bugs'], axes[3])
+        self.__plot_metric_group(filepath, ['cyclomatic_complexity', 'maintainability_index'], axes[0]) 
+        self.__plot_metric_group(filepath, ['loc', 'lloc', 'sloc', 'comments', 'comment_blocks', 'blank_lines', 'single_comments'], axes[1])
+        self.__plot_metric_group(filepath, ['halstead_h1', 'halstead_h2', 'halstead_n1', 'halstead_n2'], axes[2])
+        self.__plot_metric_group(filepath, ['halstead_vocabulary', 'halstead_length', 'halstead_calculated_length', 'halstead_volume', 'halstead_difficulty', 'halstead_effort', 'halstead_time', 'halstead_bugs'], axes[3])
         
         figure.suptitle(f'Percentage Change in Metrics for {filepath}')
         axes[-1].set_xlabel('Iteration')
@@ -149,15 +194,15 @@ class ReadabilityAnalyzer:
         else:
             figure.show()
 
-    def plot_metric_group(self, filepath: str, metric_group: list[str], axis: plt.Axes):
+    def __plot_metric_group(self, filepath: str, metric_group: list[str], axis: plt.Axes):
         for metric in metric_group:
-            self.plot_metric(filepath, metric, axis)
+            self.__plot_metric(filepath, metric, axis)
 
             axis.set_ylabel('Percentage Change (%)')
             axis.grid(True)
             axis.legend()
 
-    def plot_metric(self, filepath: str, metric: str, axis: plt.Axes):
+    def __plot_metric(self, filepath: str, metric: str, axis: plt.Axes):
         values = [getattr(readability_metrics, metric) for readability_metrics in self.metrics[filepath]]
         percentage_changes = [(values[i] - values[i-1]) / values[i-1] * 100 for i in range(1, len(values))]
         axis.plot(range(1, len(values)), percentage_changes, marker='o', label=metric)

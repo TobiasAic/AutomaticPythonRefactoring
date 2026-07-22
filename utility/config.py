@@ -4,6 +4,10 @@ import os
 
 @dataclass
 class Config():
+    """ 
+    Configuration class for the Automatic Python Refactoring tool. 
+    This class holds all the necessary configuration parameters required for the tool to function properly.
+    """
     root_path: str
     target_file_paths: list[str] 
     git_repo_path: str
