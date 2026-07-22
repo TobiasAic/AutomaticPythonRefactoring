@@ -1,5 +1,6 @@
 """
 This is the Conventional Commit Specification as of 06.07.2026 (https://www.conventionalcommits.org/en/v1.0.0/#specification) modified with a few ideas from https://cbea.ms/git-commit/ as of 06.07.2026.
+It is used to guide the generating of commit messages in the RefactoringEvaluator classes.
 """
 
 conventional_commits_specification="""

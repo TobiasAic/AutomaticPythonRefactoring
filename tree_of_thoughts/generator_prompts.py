@@ -1,3 +1,5 @@
+""" This script contains the different parts of the prompts used by the RefactoringGenerator. """
+
 header = """
 You are generating a refactoring candidate for a Python file to improve readability.
 
