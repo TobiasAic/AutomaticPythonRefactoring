@@ -1,6 +1,7 @@
 from typing import List
 import json
 from dataclasses import dataclass
+from textwrap import dedent
 
 from refactoring.multi_rename_refactoring import MultiRenameTool
 from refactoring.refactoring import Refactoring
@@ -10,26 +11,49 @@ from llm.llm_types import ToolCall
 from utility.cli import CLI
 from llm.openai_llm import OpenAILLM
 from llm.llm_presets import big_pickle_config
-from tree_of_thoughts.generator_prompts import header, with_tools_return_instruction, without_tools_return_instruction, control_flow, method_structure, expression, type_documentation, naming
 from llm.llm import LLM
-
-@dataclass
-class PromptWithTools:
-    prompt: str
-    tools: List[dict]
-
+from tree_of_thoughts.refactoring_category import ControlFlowCategory, MethodStructureCategory, ExpressionCategory, TypeDocumentationCategory, NamingCategory
 
 class RefactoringGenerator:
-    prompts_with_tools = [
-        PromptWithTools(prompt=header+control_flow, tools=[]),
-        PromptWithTools(prompt=header+method_structure, tools=[ExtractMethodTool.get_description()]),
-        PromptWithTools(prompt=header+expression, tools=[]),
-        PromptWithTools(prompt=header+type_documentation, tools=[]),
-        PromptWithTools(prompt=header+naming, tools=[MultiRenameTool.get_description()]),
-    ]
+    prompt = dedent("""
+    You are generating a refactoring candidate for a Python file to improve readability.
+
+    This is the Python file to refactor:
+    {code_segment}
+
+    Find exactly one small refactoring from the category specified below.
+
+    The refactoring must:
+    - Improve readability.
+    - Preserve behavior exactly.
+    - Avoid changing public APIs.
+    - Avoid adding imports.
+    - Avoid renaming functions, parameters, or classes.
+    - Not repeat a refactoring already performed in the commit history.
+
+    Commit history:
+    {commit_history}
+
+    Prefer a real readability improvement over a cosmetic change.
+
+    If there is no refactoring in that category that significantly improves readability, return "NO_REFACTORING".
+
+    If you find a refactoring return the refactored code in a Markdown Python code block (without line numbers).
+    You have to return the entire file with your changes.
+    ```python
+        ...some python code...
+    ```
+    """).strip()
+
+    tool_instruction = dedent("""
+    Some refactorings can be done by calling a tool. 
+    If the refactoring can be done by a tool, you MUST use the tool.
+    Otherwise, return the refactored code in the Markdown Python code block.
+    """).strip()
 
     def __init__(self, llm: LLM):
         self.llm = llm
+        self.categories = [ControlFlowCategory(), MethodStructureCategory(), ExpressionCategory(), TypeDocumentationCategory(), NamingCategory()]
 
     def generate_refactorings(self, code_segment: str, filepath: str, commit_history: list) -> List[Refactoring]:
         """Generate refactorings from different categories for a given code segment using the LLM.
@@ -45,18 +69,29 @@ class RefactoringGenerator:
         Returns:
             List[Refactoring]: A list of generated refactoring candidates.
         """
-        prompts = [prompt_with_tool.prompt.format(
-            code_segment=self.__add_line_numbers(code_segment), 
-            commit_history=commit_history,
-            return_instruction=without_tools_return_instruction if not prompt_with_tool.tools else with_tools_return_instruction
-            ) for prompt_with_tool in self.prompts_with_tools]
-        tools = [prompt_with_tool.tools for prompt_with_tool in self.prompts_with_tools]
+        prompt = self.prompt.format(
+            code_segment=self.__add_line_numbers(code_segment),
+            commit_history=commit_history
+        )
+
+        tools = [category.get_tools() for category in self.categories]
+
+        prompts = []
+        for category in self.categories:
+            category_prompt = prompt 
+            if len(category.get_tools()) > 0:
+                category_prompt += "\n" + self.tool_instruction
+            category_prompt += "\n" + category.get_prompt()
+            prompts.append(category_prompt)
+
+
         llm_responses = self.llm.batch_generate(prompts, tools)
 
         refactorings = []
         for i, response in enumerate(llm_responses): 
             if response.text == "NO_REFACTORING":
-                CLI.print_debug(f"No meaningful refactoring found for prompt {i + 1}.")
+                CLI.print_debug(f"No meaningful refactoring found for {self.categories[i].get_name()}.")
+                self.categories.pop(i)
                 refactoring = None
             elif response.text is not None:
                 refactoring = self.__handle_string_response(response.text, code_segment, filepath)
