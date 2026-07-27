@@ -51,7 +51,10 @@ class RefactoringSystem:
         for iteration in range(self.config.max_iterations):
             iteration_start = time.time()
             CLI.print_banner(f"Iteration {iteration + 1} - Current MI: {self.readability_analyzer.metrics[filepath][-1].maintainability_index}", symbol="-")
+            self.do_iteration(filepath, iteration)
+            print(f"Iteration {iteration + 1} completed in {self.format_timespan(time.time() - iteration_start)}")
 
+    def do_iteration(self, filepath: str, iteration: int):
             with open(filepath, "r") as f:
                 code_segment = f.read()
 
@@ -73,8 +76,6 @@ class RefactoringSystem:
                 self.apply_best_refactoring(filepath, sorted_refactorings)
 
             self.readability_analyzer.record_metrics(filepath)
-
-            print(f"Iteration {iteration + 1} completed in {self.format_timespan(time.time() - iteration_start)}")
 
     def print_refactorings(self, sorted_refactorings):
         for i, refactoring in enumerate(sorted_refactorings):
