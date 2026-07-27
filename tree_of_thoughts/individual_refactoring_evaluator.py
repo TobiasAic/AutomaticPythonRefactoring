@@ -99,7 +99,7 @@ class IndividualRefactoringEvaluator(RefactoringEvaluator):
         """
         data = self.extract_json(llm_response)
 
-        if not all(key in data for key in ["refactoring_id", "commit_message", "correct", "grade"]):
+        if not all(key in data for key in ["commit_message", "correct", "grade"]):
             raise ValueError(
                 "LLM response JSON object is missing required fields.")
         return RefactoringEvaluation(
