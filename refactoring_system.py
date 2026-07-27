@@ -26,7 +26,7 @@ class RefactoringSystem:
         self.refactoring_generator = RefactoringGenerator(generator_llm)
         self.refactoring_evaluator = IndividualRefactoringEvaluator(evaluator_llm)
         self.readability_analyzer = ReadabilityAnalyzer()
-        self.tester = PytestTester(project_root=Path(config.get_absolute_test_root_path()), pyenv_name=config.pyenv_name)
+        self.tester = PytestTester(pyenv_name=config.pyenv_name, test_file_path=config.get_absolute_test_file_path())
         self.refactoring_storage = RefactoringStorage(os.path.abspath("refactoring_collection/refactoring_ids.json"))
 
     def run(self):

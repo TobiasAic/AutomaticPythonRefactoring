@@ -5,9 +5,9 @@ from pytest import ExitCode
 from pathlib import Path
 
 class PytestTester(Tester):
-    def __init__(self, project_root: Path, pyenv_name: str):
-        self.project_root = project_root
+    def __init__(self, pyenv_name: str, test_file_path: str):
         self.pyenv_name = pyenv_name
+        self.test_file_path = test_file_path
 
     def test_before(self) -> str:
         """Run tests and record which passed and which failed.
@@ -36,7 +36,7 @@ class PytestTester(Tester):
     def __run_pytest(self) -> str:
         env = os.environ.copy()
         env["PYENV_VERSION"] = self.pyenv_name
-        result = subprocess.run(["pyenv", "exec", "pytest",  "-q", "-rpf"], cwd=self.project_root, env=env, capture_output=True, text=True)
+        result = subprocess.run(["pyenv", "exec", "pytest",  "-q", "-rpf", self.test_file_path], env=env, capture_output=True, text=True)
         if not result.returncode in [ExitCode.OK, ExitCode.TESTS_FAILED]:
             raise Exception(f"Pytest execution failed with return code {result.returncode}. Stderr: {result.stderr}")
         return result.stdout

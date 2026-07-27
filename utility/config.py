@@ -13,7 +13,7 @@ class Config():
     git_repo_path: str
     branch_name: str
     pyenv_name: str
-    test_root_path: str
+    test_file_path: str
     max_iterations: int = None
     statistics_directory: str = None
     show_tree: bool = False
@@ -26,7 +26,7 @@ class Config():
             f"  git_repo_path='{self.git_repo_path}',\n"
             f"  branch_name='{self.branch_name}',\n"
             f"  pyenv_name='{self.pyenv_name}',\n"
-            f"  test_root_path='{self.test_root_path}',\n"
+            f"  test_file_path='{self.test_file_path}',\n"
             f"  max_iterations={self.max_iterations},\n"
             f"  statistics_directory='{self.statistics_directory}',\n"
             f"  show_tree={self.show_tree}\n"
@@ -39,8 +39,8 @@ class Config():
     def get_absolute_git_repo_path(self) -> str:
         return os.path.join(self.root_path, self.git_repo_path)
     
-    def get_absolute_test_root_path(self) -> str:
-        return os.path.join(self.root_path, self.test_root_path)
+    def get_absolute_test_file_path(self) -> str:
+        return os.path.join(self.root_path, self.test_file_path)
 
     def get_absolute_statistics_directory(self) -> str:
         return os.path.join(self.root_path, self.statistics_directory)
@@ -55,7 +55,7 @@ def load_from_toml(file_path: str) -> "Config":
         git_repo_path=data["git_repo_path"],
         branch_name=data["branch_name"],
         pyenv_name=data["pyenv_name"],
-        test_root_path=data["test_root_path"],
+        test_file_path=data["test_file_path"],
         max_iterations=data["max_iterations"],
         statistics_directory=data["statistics_directory"],
         show_tree=data["show_tree"]
