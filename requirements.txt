@@ -6,3 +6,5 @@ pytest
 python-dotenv
 GitPython
 pylint
+pandas
+libcst
