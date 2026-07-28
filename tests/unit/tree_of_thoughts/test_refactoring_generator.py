@@ -19,7 +19,7 @@ def test_python_code_extraction():
     """
 
     generator = RefactoringGenerator(None)  # This test does not require setting the LLM 
-    extracted_code = generator.__extract_python_code(response)
+    extracted_code = generator.extract_python_code(response)
     assert extracted_code == python_code.strip()
 
 def test_failed_python_code_extraction():
@@ -35,4 +35,4 @@ def test_failed_python_code_extraction():
 
     generator = RefactoringGenerator(None)  # This test does not require setting the LLM 
     with pytest.raises(ValueError):
-        generator.__extract_python_code(response)
+        generator.extract_python_code(response)

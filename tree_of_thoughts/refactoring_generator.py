@@ -133,7 +133,7 @@ class RefactoringGenerator:
             return None
 
     
-    def __extract_python_code(self, text: str) -> str:
+    def extract_python_code(self, text: str) -> str: # Needs to be public for unit tests
         """ Extract Python code from a string that contains a code block wrapped in markdown markers. """
         start_marker = "```python"
         end_marker = "```"
