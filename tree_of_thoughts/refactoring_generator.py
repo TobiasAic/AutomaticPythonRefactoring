@@ -2,6 +2,7 @@ from typing import List
 import json
 from dataclasses import dataclass
 from textwrap import dedent
+import random
 
 from refactoring.multi_rename_refactoring import MultiRenameTool
 from refactoring.refactoring import Refactoring
@@ -51,9 +52,12 @@ class RefactoringGenerator:
     Otherwise, return the refactored code in the Markdown Python code block.
     """).strip()
 
-    def __init__(self, llm: LLM):
+    def __init__(self, llm: LLM, count: int = 1):
         self.llm = llm
         self.categories = [ControlFlowCategory(), MethodStructureCategory(), ExpressionCategory(), TypeDocumentationCategory(), NamingCategory()]
+        if count > len(self.categories) and count > 0:
+            raise ValueError(f"Count {count} exceeds the number of available categories {len(self.categories)} or is not positive.")
+        self.count = count
 
     def generate_refactorings(self, code_segment: str, filepath: str, commit_history: list) -> List[Refactoring]:
         """Generate refactorings from different categories for a given code segment using the LLM.
@@ -74,10 +78,12 @@ class RefactoringGenerator:
             commit_history=commit_history
         )
 
-        tools = [category.get_tools() for category in self.categories]
+        round_categories = random.sample(self.categories, min(self.count, len(self.categories)))
+
+        tools = [category.get_tools() for category in round_categories]
 
         prompts = []
-        for category in self.categories:
+        for category in round_categories:
             category_prompt = prompt 
             if len(category.get_tools()) > 0:
                 category_prompt += "\n" + self.tool_instruction
@@ -90,8 +96,8 @@ class RefactoringGenerator:
         refactorings = []
         for i, response in enumerate(llm_responses): 
             if response.text == "NO_REFACTORING":
-                CLI.print_debug(f"No meaningful refactoring found for {self.categories[i].get_name()}.")
-                self.categories.pop(i)
+                CLI.print_debug(f"No meaningful refactoring found for {round_categories[i].get_name()}.")
+                self.categories.remove(round_categories[i]) # Remove the category from future consideration
                 refactoring = None
             elif response.text is not None:
                 refactoring = self.__handle_string_response(response.text, code_segment, filepath)
@@ -108,7 +114,7 @@ class RefactoringGenerator:
     def __handle_string_response(self, response: str, code_segment: str, filepath: str) -> str|None:
         """ Generate a Refactoring object from a string response from the LLM. """
         try:
-            refactored_code = self.__extract_python_code(response)
+            refactored_code = self.extract_python_code(response)
         except ValueError as e:
             CLI.print_debug(f"Failed to extract Python code from LLM response: {response}")
             return None
