@@ -515,3 +515,66 @@ class SubstituteAlgorithm(RefactoringSuggestion):
         A complex, specific algorithm is probably intended and should not change.
         Your job is not to improve performance.
     """).strip()
+
+
+"""
+From here on, the suggestions are self-created and not from Martin Fowler's Refactoring Catalog.
+"""
+
+class AddTypeHints(RefactoringSuggestion):
+    name = "Add Type Hints"
+
+    example_before = dedent("""
+        def add(a, b):
+            return a + b
+    """).strip()
+
+    example_after = dedent("""
+        def add(a: float, b: float) -> float:
+            return a + b
+    """).strip()
+
+    notes = dedent("""""").strip()
+
+class ImproveMethodDocstring(RefactoringSuggestion):
+    name = "Improve Method Docstring"
+
+    example_before = dedent("""
+        def add(a, b):
+            return a + b
+    """).strip()
+
+    example_after = dedent("""
+        def add(a: float, b: float) -> float:
+            \"\"\"Return the sum of two numbers.
+
+            Args:
+                a: The first number.
+                b: The second number.
+
+            Returns:
+                The sum of `a` and `b`.
+            \"\"\" 
+            return a + b
+    """).strip()
+
+    notes = dedent("""""").strip()
+
+class AddExplanatoryComment(RefactoringSuggestion):
+    name = "Add Explanatory Comment"
+
+    example_before = dedent("""
+        EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$") 
+    """).strip()
+
+    example_after = dedent("""
+        # Matches a basic email format: non-whitespace characters before and
+        # after '@', followed by a dot and a non-whitespace domain suffix.
+        EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    """).strip()
+
+    notes = dedent("""
+        Only add comments that genuinely improve understanding of the code.
+        If they just repeat what the code already clearly expresses, they are not helpful.
+        If you are unsure wether a comment is correct, do not add it.
+    """).strip()
