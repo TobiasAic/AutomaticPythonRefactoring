@@ -128,7 +128,7 @@ class RefactoringGenerator:
         try:
             refactored_code = self.extract_python_code(response)
         except ValueError as e:
-            CLI.print_debug(f"Failed to extract Python code from LLM response: {response}")
+            CLI.print_debug(f"Failed to extract Python code from LLM response: {e}")
             return None
         return Refactoring(code_segment, refactored_code)
     
@@ -158,7 +158,7 @@ class RefactoringGenerator:
 
         # there need to be 2 end markers in the text because the start_marker also contains the end_marker
         if text.count(start_marker) != 1 or text.count(end_marker) != 2:
-            raise ValueError("Input text does not contain exactly one pair of start and end markers.")
+            raise ValueError(f"Input text contains {text.count(start_marker)} start markers and {text.count(end_marker)} end markers. Expected exactly 1 start marker and 2 end markers.")
         
         start_index = text.find(start_marker) + len(start_marker)
         end_index = text.find(end_marker, start_index) # have to look after the start_index to find the correct end_marker
