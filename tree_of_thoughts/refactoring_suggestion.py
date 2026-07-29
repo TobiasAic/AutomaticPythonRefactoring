@@ -2,6 +2,7 @@ from textwrap import dedent
 
 """
 These refactoring suggestions are a selection from Martin Fowler's Refactoring Catalog (https://refactoring.com/catalog/ as of 29.08.2026).
+The examples were translated from JavaScript to Python.
 """
 
 
@@ -31,19 +32,22 @@ class ConsolidateConditionalExpression(RefactoringSuggestion):
     name = "Consolidate Conditional Expression"
 
     example_before = dedent("""
-        if (anEmployee.seniority < 2) return 0;
-        if (anEmployee.monthsDisabled > 12) return 0;
-        if (anEmployee.isPartTime) return 0;
+        if anEmployee.seniority < 2:
+            return 0
+        if anEmployee.monthsDisabled > 12:
+            return 0
+        if anEmployee.isPartTime:
+            return 0
     """).strip()
 
     example_after = dedent("""
-        if (isNotEligibleForDisability()) return 0;
+        if is_not_eligible_for_disability():
+            return 0
 
-        function isNotEligibleForDisability() {
+        def is_not_eligible_for_disability():
             return ((anEmployee.seniority < 2)
-                    || (anEmployee.monthsDisabled > 12)
-                    || (anEmployee.isPartTime));
-        }
+                    or (anEmployee.monthsDisabled > 12)
+                    or (anEmployee.isPartTime))
     """).strip()
 
     notes = dedent("""""").strip()
@@ -53,91 +57,104 @@ class DecomposeConditional(RefactoringSuggestion):
     name = "Decompose Conditional"
 
     example_before = dedent("""
-        if (!aDate.isBefore(plan.summerStart) && !aDate.isAfter(plan.summerEnd))
-            charge = quantity * plan.summerRate;
-        else
-            charge = quantity * plan.regularRate + plan.regularServiceCharge; 
+        if not aDate.isBefore(plan.summerStart) and not aDate.isAfter(plan.summerEnd):
+            charge = quantity * plan.summerRate
+        else:
+            charge = quantity * plan.regularRate + plan.regularServiceCharge
     """).strip()
 
     example_after = dedent("""
-        if (summer())
-            charge = summerCharge();
-        else
-            charge = regularCharge(); 
+        if summer():
+            charge = summer_charge()
+        else:
+            charge = regular_charge()
     """).strip()
 
     notes = dedent("""""").strip()
+
 
 class ExtractClass(RefactoringSuggestion):
     name = "Extract Class"
 
     example_before = dedent("""
-       class Person {
-            get officeAreaCode() {return this._officeAreaCode;}
-            get officeNumber()   {return this._officeNumber;} 
-        } 
+        class Person:
+            @property
+            def officeAreaCode(self):
+                return self._officeAreaCode
+
+            @property
+            def officeNumber(self):
+                return self._officeNumber
     """).strip()
 
     example_after = dedent("""
-        class Person {
-            get officeAreaCode() {return this._telephoneNumber.areaCode;}
-            get officeNumber()   {return this._telephoneNumber.number;}
-        }
-        class TelephoneNumber {
-            get areaCode() {return this._areaCode;}
-            get number()   {return this._number;}
-        }  
+        class Person:
+            @property
+            def officeAreaCode(self):
+                return self._telephoneNumber.areaCode
+
+            @property
+            def officeNumber(self):
+                return self._telephoneNumber.number
+
+        class TelephoneNumber:
+            @property
+            def areaCode(self):
+                return self._areaCode
+
+            @property
+            def number(self):
+                return self._number
     """).strip()
 
     notes = dedent("""
         Make sure to not change the public API of the original class.
     """).strip()
 
+
 class ExtractFunction(RefactoringSuggestion):
     name = "Extract Function"
 
     example_before = dedent("""
-        function printOwing(invoice) {
-            printBanner();
-            let outstanding  = calculateOutstanding();
+        def print_owing(invoice):
+            print_banner()
+            outstanding = calculate_outstanding()
 
-            //print details
-            console.log(`name: ${invoice.customer}`);
-            console.log(`amount: ${outstanding}`);  
-        } 
+            # print details
+            print(f"name: {invoice.customer}")
+            print(f"amount: {outstanding}")
     """).strip()
 
     example_after = dedent("""
-        function printOwing(invoice) {
-            printBanner();
-            let outstanding = calculateOutstanding();
-            printDetails(outstanding);
+        def print_owing(invoice):
+            print_banner()
+            outstanding = calculate_outstanding()
+            print_details(outstanding)
 
-            function printDetails(outstanding) {
-                console.log(`name: ${invoice.customer}`);
-                console.log(`amount: ${outstanding}`);
-            }
-        } 
+            def print_details(outstanding):
+                print(f"name: {invoice.customer}")
+                print(f"amount: {outstanding}")
     """).strip()
 
     notes = dedent("""
         Use the provided tool.
     """).strip()
 
+
 class ExtractVariable(RefactoringSuggestion):
     name = "Extract Variable"
 
     example_before = dedent("""
         return order.quantity * order.itemPrice -
-            Math.max(0, order.quantity - 500) * order.itemPrice * 0.05 +
-            Math.min(order.quantity * order.itemPrice * 0.1, 100); 
+            max(0, order.quantity - 500) * order.itemPrice * 0.05 +
+            min(order.quantity * order.itemPrice * 0.1, 100)
     """).strip()
 
     example_after = dedent("""
-        const basePrice = order.quantity * order.itemPrice;
-        const quantityDiscount = Math.max(0, order.quantity - 500) * order.itemPrice * 0.05;
-        const shipping = Math.min(basePrice * 0.1, 100);
-        return basePrice - quantityDiscount + shipping; 
+        base_price = order.quantity * order.itemPrice
+        quantity_discount = max(0, order.quantity - 500) * order.itemPrice * 0.05
+        shipping = min(base_price * 0.1, 100)
+        return base_price - quantity_discount + shipping
     """).strip()
 
     notes = dedent("""""").strip()
@@ -147,21 +164,34 @@ class InlineClass(RefactoringSuggestion):
     name = "Inline Class"
 
     example_before = dedent("""
-        class Person {
-            get officeAreaCode() {return this._telephoneNumber.areaCode;}
-            get officeNumber()   {return this._telephoneNumber.number;}
-        }
-        class TelephoneNumber {
-            get areaCode() {return this._areaCode;}
-            get number()   {return this._number;}
-        } 
+        class Person:
+            @property
+            def officeAreaCode(self):
+                return self._telephoneNumber.areaCode
+
+            @property
+            def officeNumber(self):
+                return self._telephoneNumber.number
+
+        class TelephoneNumber:
+            @property
+            def areaCode(self):
+                return self._areaCode
+
+            @property
+            def number(self):
+                return self._number
     """).strip()
 
     example_after = dedent("""
-        class Person {
-            get officeAreaCode() {return this._officeAreaCode;}
-            get officeNumber()   {return this._officeNumber;} 
-        }
+        class Person:
+            @property
+            def officeAreaCode(self):
+                return self._officeAreaCode
+
+            @property
+            def officeNumber(self):
+                return self._officeNumber
     """).strip()
 
     notes = dedent("""
@@ -173,126 +203,123 @@ class InlineFunction(RefactoringSuggestion):
     name = "Inline Function"
 
     example_before = dedent("""
-        function getRating(driver) {
-            return moreThanFiveLateDeliveries(driver) ? 2 : 1;
-        }
+        def get_rating(driver):
+            return 2 if more_than_five_late_deliveries(driver) else 1
 
-        function moreThanFiveLateDeliveries(driver) {
-            return driver.numberOfLateDeliveries > 5;
-        } 
+        def more_than_five_late_deliveries(driver):
+            return driver.numberOfLateDeliveries > 5
     """).strip()
 
     example_after = dedent("""
-        function getRating(driver) {
-            return (driver.numberOfLateDeliveries > 5) ? 2 : 1;
-        }  
+        def get_rating(driver):
+            return 2 if driver.numberOfLateDeliveries > 5 else 1
     """).strip()
 
     notes = dedent("""""").strip()
+
 
 class InlineVariable(RefactoringSuggestion):
     name = "Inline Variable"
 
     example_before = dedent("""
-        let basePrice = anOrder.basePrice;
-        return (basePrice > 1000); 
+        base_price = anOrder.basePrice
+        return base_price > 1000
     """).strip()
 
     example_after = dedent("""
-        return anOrder.basePrice > 1000; 
+        return anOrder.basePrice > 1000
     """).strip()
 
     notes = dedent("""""").strip()
+
 
 class PreserveWholeObject(RefactoringSuggestion):
     name = "Preserve Whole Object"
 
     example_before = dedent("""
-        const low = aRoom.daysTempRange.low;
-        const high = aRoom.daysTempRange.high;
-        if (aPlan.withinRange(low, high)) 
+        low = aRoom.daysTempRange.low
+        high = aRoom.daysTempRange.high
+        if aPlan.withinRange(low, high):
+            pass
     """).strip()
 
     example_after = dedent("""
-       if (aPlan.withinRange(aRoom.daysTempRange)) 
+        if aPlan.withinRange(aRoom.daysTempRange):
+            pass
     """).strip()
 
     notes = dedent("""
         Make sure to not change the public API of the class or function.
     """).strip()
 
+
 class RemoveDeadCode(RefactoringSuggestion):
     name = "Remove Dead Code"
 
     example_before = dedent("""
-        if(false) {
-            doSomethingThatUsedToMatter();
-        } 
+        if False:
+            do_something_that_used_to_matter()
     """).strip()
 
     example_after = dedent("""
-        
+
     """).strip()
 
     notes = dedent("""""").strip()
+
 
 class RenameVariable(RefactoringSuggestion):
     name = "Rename Variable"
 
     example_before = dedent("""
-       let a = height * width; 
+        a = height * width
     """).strip()
 
     example_after = dedent("""
-       let area = height * width; 
+        area = height * width
     """).strip()
 
     notes = dedent("""
         Use the provided tool.
     """).strip()
 
+
 class ReplaceControlFlagWithBreak(RefactoringSuggestion):
     name = "Replace Control Flag with Break"
 
     example_before = dedent("""
-        for (const p of people) {
-            if (! found) {
-                if ( p === “Don”) {
-                    sendAlert();
-                    found = true;
-                }
-            }
-        } 
+        found = False
+        for p in people:
+            if not found:
+                if p == "Don":
+                    send_alert()
+                    found = True
     """).strip()
 
     example_after = dedent("""
-        for (const p of people) {
-            if ( p === “Don”) {
-                sendAlert();
-                break;
-            }
-        }
+        for p in people:
+            if p == "Don":
+                send_alert()
+                break
     """).strip()
 
     notes = dedent("""""").strip()
+
 
 class ReplaceExceptionWithPrecheck(RefactoringSuggestion):
     name = "Replace Exception with Precheck"
 
     example_before = dedent("""
-        double getValueForPeriod (int periodNumber) {
-            try {
-                return values[periodNumber];
-            } catch (ArrayIndexOutOfBoundsException e) {
-                return 0;
-            }
-        } 
+        def get_value_for_period(period_number):
+            try:
+                return values[period_number]
+            except IndexError as e:
+                return 0
     """).strip()
 
     example_after = dedent("""
-        double getValueForPeriod (int periodNumber) {
-            return (periodNumber >= values.length) ? 0 : values[periodNumber];
-        } 
+        def get_value_for_period(period_number):
+            return 0 if period_number >= len(values) else values[period_number]
     """).strip()
 
     notes = dedent("""
@@ -300,22 +327,19 @@ class ReplaceExceptionWithPrecheck(RefactoringSuggestion):
         If it raised an exception before, it should still raise an exception.
     """).strip()
 
+
 class ReplaceLoopWithPipeline(RefactoringSuggestion):
     name = "Replace Loop with Pipeline"
 
     example_before = dedent("""
-        const names = [];
-        for (const i of input) {
-            if (i.job === “programmer”)
-            names.push(i.name);
-        }
+        names = []
+        for i in input:
+            if i.job == "programmer":
+                names.append(i.name)
     """).strip()
 
     example_after = dedent("""
-        const names = input
-            .filter(i => i.job === “programmer”)
-            .map(i => i.name)
-        ; 
+        names = [i.name for i in input if i.job == "programmer"]
     """).strip()
 
     notes = dedent("""""").strip()
@@ -325,16 +349,15 @@ class ReplaceMagicLiteral(RefactoringSuggestion):
     name = "Replace Magic Literal"
 
     example_before = dedent("""
-        function potentialEnergy(mass, height) {
-            return mass * 9.81 * height;
-        } 
+        def potential_energy(mass, height):
+            return mass * 9.81 * height
     """).strip()
 
     example_after = dedent("""
-        const STANDARD_GRAVITY = 9.81;
-        function potentialEnergy(mass, height) {
-            return mass * STANDARD_GRAVITY * height;
-        } 
+        STANDARD_GRAVITY = 9.81
+
+        def potential_energy(mass, height):
+            return mass * STANDARD_GRAVITY * height
     """).strip()
 
     notes = dedent("""""").strip()
@@ -344,31 +367,30 @@ class ReplaceNestedConditionalWithGuardClauses(RefactoringSuggestion):
     name = "Replace Nested Conditional with Guard Clauses"
 
     example_before = dedent("""
-        function getPayAmount() {
-            let result;
-            if (isDead)
-                result = deadAmount();
-            else {
-                if (isSeparated)
-                    result = separatedAmount();
-                else {
-                    if (isRetired)
-                        result = retiredAmount();
-                    else
-                        result = normalPayAmount();
-                }
-            }
-            return result;
-        }
+        def get_pay_amount():
+            result = None
+            if is_dead:
+                result = dead_amount()
+            else:
+                if is_separated:
+                    result = separated_amount()
+                else:
+                    if is_retired:
+                        result = retired_amount()
+                    else:
+                        result = normal_pay_amount()
+            return result
     """).strip()
 
     example_after = dedent("""
-        function getPayAmount() {
-            if (isDead) return deadAmount();
-            if (isSeparated) return separatedAmount();
-            if (isRetired) return retiredAmount();
-            return normalPayAmount();
-        } 
+        def get_pay_amount():
+            if is_dead:
+                return dead_amount()
+            if is_separated:
+                return separated_amount()
+            if is_retired:
+                return retired_amount()
+            return normal_pay_amount()
     """).strip()
 
     notes = dedent("""""").strip()
@@ -378,22 +400,24 @@ class ReplaceTempWithQuery(RefactoringSuggestion):
     name = "Replace Temp with Query"
 
     example_before = dedent("""
-        const basePrice = this._quantity * this._itemPrice;
-        if (basePrice > 1000)
-            return basePrice * 0.95;
-        else
-            return basePrice * 0.98; 
+        base_price = self._quantity * self._itemPrice
+        if base_price > 1000:
+            return base_price * 0.95
+        else:
+            return base_price * 0.98
     """).strip()
 
     example_after = dedent("""
-        get basePrice() {this._quantity * this._itemPrice;}
-            
+        @property
+        def basePrice(self):
+            return self._quantity * self._itemPrice
+
         ...
-            
-        if (this.basePrice > 1000)
-            return this.basePrice * 0.95;
-        else
-            return this.basePrice * 0.98; 
+
+        if self.basePrice > 1000:
+            return self.basePrice * 0.95
+        else:
+            return self.basePrice * 0.98
     """).strip()
 
     notes = dedent("""""").strip()
@@ -403,17 +427,17 @@ class SlideStatements(RefactoringSuggestion):
     name = "Slide Statements"
 
     example_before = dedent("""
-        const pricingPlan = retrievePricingPlan();
-        const order = retrieveOrder();
-        let charge;
-        const chargePerUnit = pricingPlan.unit; 
+        pricingPlan = retrievePricingPlan()
+        order = retrieveOrder()
+        charge = None
+        chargePerUnit = pricingPlan.unit
     """).strip()
 
     example_after = dedent("""
-        const pricingPlan = retrievePricingPlan();
-        const chargePerUnit = pricingPlan.unit;
-        const order = retrieveOrder();
-        let charge;
+        pricingPlan = retrievePricingPlan()
+        chargePerUnit = pricingPlan.unit
+        order = retrieveOrder()
+        charge = None
     """).strip()
 
     notes = dedent("""""").strip()
@@ -423,26 +447,23 @@ class SplitLoop(RefactoringSuggestion):
     name = "Split Loop"
 
     example_before = dedent("""
-        let averageAge = 0;
-        let totalSalary = 0;
-        for (const p of people) {
-            averageAge += p.age;
-            totalSalary += p.salary;
-        }
-        averageAge = averageAge / people.length; 
+        averageAge = 0
+        totalSalary = 0
+        for p in people:
+            averageAge += p.age
+            totalSalary += p.salary
+        averageAge = averageAge / len(people)
     """).strip()
 
     example_after = dedent("""
-        let totalSalary = 0;
-        for (const p of people) {
-            totalSalary += p.salary;
-        }
+        totalSalary = 0
+        for p in people:
+            totalSalary += p.salary
 
-        let averageAge = 0;
-        for (const p of people) {
-            averageAge += p.age;
-        }
-        averageAge = averageAge / people.length;
+        averageAge = 0
+        for p in people:
+            averageAge += p.age
+        averageAge = averageAge / len(people)
     """).strip()
 
     notes = dedent("""""").strip()
@@ -452,17 +473,17 @@ class SplitVariable(RefactoringSuggestion):
     name = "Split Variable"
 
     example_before = dedent("""
-       let temp = 2 * (height + width);
-        console.log(temp);
-        temp = height * width;
-        console.log(temp);
+        temp = 2 * (height + width)
+        print(temp)
+        temp = height * width
+        print(temp)
     """).strip()
 
     example_after = dedent("""
-        const perimeter = 2 * (height + width);
-        console.log(perimeter);
-        const area = height * width;
-        console.log(area);
+        perimeter = 2 * (height + width)
+        print(perimeter)
+        area = height * width
+        print(area)
     """).strip()
 
     notes = dedent("""""").strip()
@@ -472,27 +493,21 @@ class SubstituteAlgorithm(RefactoringSuggestion):
     name = "Substitute Algorithm"
 
     example_before = dedent("""
-        function foundPerson(people) {
-            for(let i = 0; i < people.length; i++) {
-                if (people[i] === “Don”) {
-                    return “Don”;
-                }
-                if (people[i] === “John”) {
-                    return “John”;
-                }
-                if (people[i] === “Kent”) {
-                    return “Kent”;
-                }
-            }
-            return “”;
-        } 
+        def foundPerson(people):
+            for i in range(len(people)):
+                if people[i] == "Don":
+                    return "Don"
+                if people[i] == "John":
+                    return "John"
+                if people[i] == "Kent":
+                    return "Kent"
+            return ""
     """).strip()
 
     example_after = dedent("""
-        function foundPerson(people) {
-            const candidates = [”Don”, “John”, “Kent”];
-            return people.find(p => candidates.includes(p)) || '';
-        }
+        def foundPerson(people):
+            candidates = ["Don", "John", "Kent"]
+            return next((p for p in people if p in candidates), '')
     """).strip()
 
     notes = dedent("""
