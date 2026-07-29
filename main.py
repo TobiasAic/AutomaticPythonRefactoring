@@ -21,5 +21,5 @@ if __name__ == '__main__':
 
     llm = OpenAILLM(qwen3_7_plus_config)
 
-    refactoring_system = RefactoringSystem(config, llm, 1)
+    refactoring_system = RefactoringSystem(config, llm, 2)
     refactoring_system.run()

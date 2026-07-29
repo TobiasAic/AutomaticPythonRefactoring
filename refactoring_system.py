@@ -61,7 +61,7 @@ class RefactoringSystem:
         for iteration in range(self.config.max_iterations):
             iteration_start = time.time()
             CLI.print_banner(
-                f"Iteration {iteration + 1} - Current MI: {self.readability_analyzer.metrics[filepath][-1].maintainability_index}", symbol="-")
+                f"Iteration {iteration + 1}")
             self.do_iteration(filepath, code_divider)
             print(
                 f"Iteration {iteration + 1} completed in {self.format_timespan(time.time() - iteration_start)}")
@@ -80,6 +80,8 @@ class RefactoringSystem:
         self.print_available_categories()
 
     def refactor_segment(self, code_segment: str, filepath: str, segment_id: int, code_divider: CodeDivider, refactoring_generator: RefactoringGenerator):
+        CLI.print_banner(
+                f"Segment {segment_id + 1} - Current MI: {self.readability_analyzer.metrics[filepath][-1].maintainability_index}", symbol="-")
         commit_history = self.git_repository.get_commit_history()
         refactoring_suggestions = refactoring_generator.generate_refactorings(
             code_segment, commit_history=commit_history)
