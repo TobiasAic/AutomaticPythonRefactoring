@@ -117,7 +117,7 @@ class RefactoringSystem:
             print(f"{i+1}. {self.refactoring_printable_string(refactoring)}")
 
     def refactoring_printable_string(self, refactoring: Refactoring) -> str:
-        if refactoring is RopeRefactoring:
+        if isinstance(refactoring, RopeRefactoring):
             tool_name = refactoring.tool_name()
         else:
             tool_name = "no tool" 
