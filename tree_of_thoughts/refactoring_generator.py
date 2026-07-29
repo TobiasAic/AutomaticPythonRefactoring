@@ -42,11 +42,17 @@ class RefactoringGenerator:
 
     If there is no refactoring in that category that significantly improves readability, return "NO_REFACTORING".
 
-    If you find a refactoring return the refactored code in a Markdown Python code block (without line numbers).
-    You have to return the entire file with your changes.
-    ```python
-        ...some python code...
-    ```
+    If you find a refactoring, return the refactored code in exactly one Markdown Python code block containing the complete refactored file following these requirements.
+    Requirements:
+    1. Output exactly ONE ```python ... ``` code block.
+    2. The code block must contain the ENTIRE file from the first line to the last line.
+    3. Include all unchanged code; do not omit anything.
+    4. Do not include line numbers.
+    5. Do not output diffs, patches, snippets, excerpts, or partial code.
+    6. Do not output any other code block.
+    7. Do not output Python code outside the single code block.
+    8. Do not provide a second code block containing unchanged or partial code.
+    The single code block is the authoritative and complete version of the file. 
     """).strip()
 
     tool_instruction = dedent("""
