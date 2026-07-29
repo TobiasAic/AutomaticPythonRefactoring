@@ -1,27 +1,37 @@
-from refactoring.refactoring import Refactoring
+import os
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from rope.base.project import Project
-import os
+
+from refactoring.refactoring import Refactoring
+
 
 class RopeRefactoring[RopeRefactoringArguments](Refactoring):
-    def __init__(self, filepath: str, refactoring_arguments: RopeRefactoringArguments):
+    def __init__(self, code_segment: str, refactoring_arguments: RopeRefactoringArguments):
         """Initialize a rope refactoring, execute it and store the old and new code.
 
         Args:
-            filepath (str): The path to the file containing the code to refactor.
+            code_segment (str): The code segment to refactor.
             refactoring_arguments (RopeRefactoringArguments): The arguments for the refactoring.
         """
-        old_code = self.__read_file(filepath)
 
-        # ropefolder=None stops rope from creating a .ropeproject folder, which helps to keep the project directory clean
-        project = Project(os.path.dirname(filepath), ropefolder=None)
-        self.execute_rope_refactoring(project, filepath, refactoring_arguments)
-        project.close()
+        with TemporaryDirectory() as temp_dir:
+            temp_dir_path = Path(temp_dir)
+            temp_file_path = temp_dir_path / "temp_file.py"
+            self.__write_file(temp_file_path, code_segment)
 
-        new_code = self.__read_file(filepath)
-        self.write_file(filepath, old_code)
+            # ropefolder=None stops rope from creating a .ropeproject folder, which helps to keep the project directory clean
+            project = Project(temp_dir_path, ropefolder=None)
+            self.execute_rope_refactoring(project, temp_file_path, refactoring_arguments)
+            project.close()
 
-        super().__init__(filepath, old_code, new_code)
+            new_code = self.__read_file(temp_file_path)
+
+        super().__init__(code_segment, new_code)
+
+    def tool_name(self) -> str:
+        return "Rope"
 
     def execute_rope_refactoring(self, project: Project, filepath: str, refactoring_arguments: RopeRefactoringArguments) -> None:
         """Execute the rope refactoring.
@@ -40,3 +50,7 @@ class RopeRefactoring[RopeRefactoringArguments](Refactoring):
     def __read_file(self, filepath: str) -> str:
         with open(filepath, 'r') as file:
             return file.read()
+
+    def __write_file(self, filepath: str, content: str) -> None:
+        with open(filepath, 'w') as file:
+            file.write(content)

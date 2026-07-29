@@ -15,17 +15,8 @@ class Task:
 
 
 class TaskRepository:
-	def __init__(self, base_dir: Path) -> None:
-		self.base_dir = base_dir
-
-	def task_file(self, user_name: str) -> Path:
-		safe_user = user_name.strip().lower().replace(" ", "_")
-		return self.base_dir / f"{safe_user}_tasks.txt"
-
-	def save(self, user_name: str, tasks: Iterable[Task]) -> None:
-		target = self.task_file(user_name)
-		lines = [f"{task.title}|{int(task.done)}" for task in tasks]
-		target.write_text("\n".join(lines), encoding="utf-8")
+    # Replaced
+    pass
 
 
 def parse_task_line(line: str) -> Task:
@@ -48,8 +39,12 @@ def print_report(user_name: str, tasks: list[Task]) -> None:
 
 
 def load_demo_tasks() -> list[Task]:
-    # This segment got replaced
-    pass
+	raw_lines = [
+		"Write tests|1",
+		"Refactor parser|0",
+		"Update docs|0",
+	]
+	return [parse_task_line(line) for line in raw_lines]
 
 
 def main() -> None:

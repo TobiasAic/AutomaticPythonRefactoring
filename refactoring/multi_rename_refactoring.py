@@ -31,6 +31,9 @@ class MultiRenameRefactoring(RopeRefactoring[list[RenameArguments]]):
             changes = rename.get_changes(argument.new_name)
             project.do(changes)
 
+    def tool_name(self) -> str:
+        return "Multi Rename"
+
 class MultiRenameTool(RefactoringTool):
     @staticmethod
     def get_description() -> dict:

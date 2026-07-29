@@ -1,125 +1,170 @@
-from pathlib import Path
 import time
 from datetime import timedelta
-import os
+from pathlib import Path
 
-from utility.git_repository import GitRepository
-from llm.openai_llm import OpenAILLM
-from llm.replay_llm import ReplayLLM, ReplayMode
-from llm.llm_presets import big_pickle_config
-from tree_of_thoughts.refactoring_generator import RefactoringGenerator 
-from tree_of_thoughts.individual_refactoring_evaluator import IndividualRefactoringEvaluator
-from utility.readability_analyzer import ReadabilityAnalyzer
-from utility.config import Config
-from utility.compiler import Compiler
-from utility.pytest_tester import PytestTester
+from llm.llm import LLM
+from refactoring.refactoring import Refactoring
+from refactoring.rope_refactoring import RopeRefactoring
+from tree_of_thoughts.individual_refactoring_evaluator import (
+    IndividualRefactoringEvaluator,
+)
+from tree_of_thoughts.refactoring_generator import RefactoringGenerator
 from utility.cli import CLI
-from refactoring.refactoring_storage import RefactoringStorage
+from utility.code_divider import CodeDivider
+from utility.compiler import Compiler
+from utility.config import Config
+from utility.git_repository import GitRepository
+from utility.pytest_tester import PytestTester
+from utility.readability_analyzer import ReadabilityAnalyzer
+
 
 class RefactoringSystem:
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, llm: LLM, count: int):
         self.config = config
+        self.count = count
+        self.llm = llm
 
-        self.git_repository = GitRepository(config.get_absolute_git_repo_path())
-        generator_llm = ReplayLLM(config=big_pickle_config, filepath="replays/new_generator.json", mode=ReplayMode.REPLAY)
-        evaluator_llm = ReplayLLM(config=big_pickle_config, filepath="replays/new_evaluator.json", mode=ReplayMode.REPLAY)
-        self.refactoring_generator = RefactoringGenerator(generator_llm)
-        self.refactoring_evaluator = IndividualRefactoringEvaluator(evaluator_llm)
+        self.git_repository = GitRepository(
+            config.get_absolute_git_repo_path())
+        self.refactoring_evaluator = IndividualRefactoringEvaluator(llm)
         self.readability_analyzer = ReadabilityAnalyzer()
-        self.tester = PytestTester(pyenv_name=config.pyenv_name, test_file_path=config.get_absolute_test_file_path())
-        self.refactoring_storage = RefactoringStorage(os.path.abspath("refactoring_collection/refactoring_ids.json"))
+        self.tester = PytestTester(
+            pyenv_name=config.pyenv_name, test_file_path=config.get_absolute_test_file_path())
 
     def run(self):
         start = time.time()
         self.git_repository.create_branch(self.config.branch_name)
-        CLI.print_debug(f"Successfully created and switched to branch '{self.git_repository.get_current_branch()}'")
 
         for filepath in self.config.get_absolute_file_paths():
             self.refactor_file(filepath)
-            self.readability_analyzer.plot_percentage_change(filepath, output_path=self.config.get_absolute_statistics_directory() + f"/{Path(filepath).stem}_readability_plot.png")
+            self.readability_analyzer.plot_percentage_change(
+                filepath, output_path=self.config.get_absolute_statistics_directory() + f"/{Path(filepath).stem}_readability_plot.png")
 
-        self.readability_analyzer.save(self.config.get_absolute_statistics_directory() + "/readability_metrics.json")
-        CLI.print_debug(f"Saved readability metrics to {self.config.get_absolute_statistics_directory() + '/readability_metrics.json'}")
-        print(f"Finished refactoring in {self.format_timespan(time.time() - start)}")
+        self.readability_analyzer.save(
+            self.config.get_absolute_statistics_directory() + "/readability_metrics.json")
+        print(
+            f"Finished refactoring in {self.format_timespan(time.time() - start)}")
 
     def refactor_file(self, filepath: str):
-        test_results = self.tester.test_before() # Run tests before starting the refactoring process to establish a baseline
-        print(f"Test results before refactoring: {test_results}")
+        CLI.print_banner(
+            f"Starting refactoring for {Path(filepath).name}", symbol="=", empty_line_count=2)
+        # Run tests before starting the refactoring process to establish a baseline
+        print(f"Test results before refactoring: {self.tester.test_before()}")
         self.readability_analyzer.record_metrics(filepath)
-        CLI.print_banner(f"Starting refactoring for {Path(filepath).name}", symbol="=", empty_line_count=2)
+
+        code = self.__read_file(filepath)
+        code_divider = CodeDivider(code)
+        if code_divider.get_code() != code:
+            CLI.print_error(
+                f"Code was incorrectly divided into {code_divider.get_number_of_segments()} segments for {filepath}.")
 
         for iteration in range(self.config.max_iterations):
             iteration_start = time.time()
-            CLI.print_banner(f"Iteration {iteration + 1} - Current MI: {self.readability_analyzer.metrics[filepath][-1].maintainability_index}", symbol="-")
-            self.do_iteration(filepath, iteration)
-            print(f"Iteration {iteration + 1} completed in {self.format_timespan(time.time() - iteration_start)}")
+            CLI.print_banner(
+                f"Iteration {iteration + 1} - Current MI: {self.readability_analyzer.metrics[filepath][-1].maintainability_index}", symbol="-")
+            self.do_iteration(filepath, code_divider)
+            print(
+                f"Iteration {iteration + 1} completed in {self.format_timespan(time.time() - iteration_start)}")
 
-    def do_iteration(self, filepath: str, iteration: int):
-            with open(filepath, "r") as f:
-                code_segment = f.read()
+    def do_iteration(self, filepath: str, code_divider: CodeDivider):
+        self.refactoring_generators = [RefactoringGenerator(self.llm, self.count) for _ in range(code_divider.get_number_of_segments())]
 
-            commit_history = self.git_repository.get_commit_history()
-            refactoring_suggestions = self.refactoring_generator.generate_refactorings(code_segment, filepath=filepath, commit_history=commit_history)
+        self.print_available_categories()
 
-            self.refactoring_evaluator.batch_evaluate(refactoring_suggestions)
-
-            for refactoring in refactoring_suggestions:
-                self.refactoring_storage.save_refactoring(refactoring)
-
-            sorted_refactorings = self.sort_refactorings_by_evaluation(refactoring_suggestions)
-
-            self.print_refactorings(sorted_refactorings)
-
-            if self.config.show_tree:
-                self.apply_all_refactorings(filepath, iteration, sorted_refactorings) 
+        for segment_id, segment in code_divider.get_segments_with_id().items():
+            if len(self.refactoring_generators[segment_id].categories) > 0:
+                self.refactor_segment(segment, filepath, segment_id, code_divider, self.refactoring_generators[segment_id])
             else:
-                self.apply_best_refactoring(filepath, sorted_refactorings)
+                CLI.print_debug(f"No more categories available for segment {segment_id+1}. Skipping refactoring for this segment.")
 
-            self.readability_analyzer.record_metrics(filepath)
+        self.print_available_categories()
 
-    def print_refactorings(self, sorted_refactorings):
-        for i, refactoring in enumerate(sorted_refactorings):
-            if not refactoring.evaluation:
-                print(f"{i + 1}. Refactoring without evaluation")
-            else:
-                print(f"{i + 1}. {"Correct" if refactoring.evaluation.correct else "Incorrect"}, {refactoring.evaluation.grade}: {refactoring.evaluation.description}")
+    def refactor_segment(self, code_segment: str, filepath: str, segment_id: int, code_divider: CodeDivider, refactoring_generator: RefactoringGenerator):
+        commit_history = self.git_repository.get_commit_history()
+        refactoring_suggestions = refactoring_generator.generate_refactorings(
+            code_segment, commit_history=commit_history)
 
-    def apply_all_refactorings(self, filepath, iteration, sorted_refactorings):
-        found_best_refactoring = False
-        for i, refactoring in enumerate(sorted_refactorings):
-            if refactoring.evaluation is not None:
-                refactoring.execute()
-                self.git_repository.create_branch(f"{Path(filepath).name.replace('.py', '')}_{iteration + 1}_{i + 1}")
-                self.git_repository.commit_changes(refactoring.evaluation.description)
-                if not found_best_refactoring and self.validate_refactoring(filepath) and refactoring.evaluation.correct:
-                    self.git_repository.move_branch(self.config.branch_name)
-                    found_best_refactoring = True
-                self.git_repository.go_to_previous_commit()
-        self.git_repository.checkout_branch(self.config.branch_name)
+        if refactoring_suggestions == []:
+            CLI.print_debug(
+                f"No refactoring suggestions generated for segment in {filepath}.")
+            return
 
-    def apply_best_refactoring(self, filepath, sorted_refactorings):
-        for refactoring in sorted_refactorings:
-            if refactoring.evaluation and refactoring.evaluation.correct:
-                if self.validate_refactoring(filepath):
-                    refactoring.execute()
-                    self.git_repository.commit_changes(refactoring.evaluation.description)
-                    break
-                else:
-                    CLI.print_debug(f"Refactoring '{refactoring.evaluation.description}' failed validation. Trying next best refactoring.")
-        else:
-            print("No correct refactorings generated in this iteration")
+        self.refactoring_evaluator.batch_evaluate(refactoring_suggestions)
+
+        sorted_refactorings = self.sort_refactorings_by_evaluation(
+            refactoring_suggestions)
+        self.print_refactorings(sorted_refactorings)
+        final_candidates = self.filter_refactorings(sorted_refactorings)
+
+        self.apply_best_refactoring(filepath, segment_id, final_candidates, code_divider)
+
+        self.readability_analyzer.record_metrics(filepath)
 
     def sort_refactorings_by_evaluation(self, refactorings: list) -> list:
         return sorted(refactorings, key=lambda r: r.evaluation.sorting_value() if r.evaluation else 0, reverse=True)
 
-    def validate_refactoring(self, filepath: str) -> bool:
+    def filter_refactorings(self, refactorings: list) -> list:
+        filtered_refactorings = []
+        for refactoring in refactorings:
+            if refactoring.evaluation and refactoring.evaluation.correct:
+                filtered_refactorings.append(refactoring)
+        return filtered_refactorings
+
+    def print_refactorings(self, sorted_refactorings):
+        for i, refactoring in enumerate(sorted_refactorings):
+            print(f"{i+1}. {self.refactoring_printable_string(refactoring)}")
+
+    def refactoring_printable_string(self, refactoring: Refactoring) -> str:
+        if refactoring is RopeRefactoring:
+            tool_name = refactoring.tool_name()
+        else:
+            tool_name = "no tool" 
+
+        if not refactoring.evaluation:
+            return f"no evaluation, {tool_name}"
+        else:
+            short_description = refactoring.evaluation.description.splitlines()[0]  # Get the first line of the description
+            correct_string = "Correct" if refactoring.evaluation.correct else "Incorrect"
+            return f"{correct_string}, {refactoring.evaluation.grade}, {short_description}, {tool_name}"
+
+    def apply_best_refactoring(self, filepath, segment_id: int, sorted_refactorings: list, code_divider: CodeDivider):
+        for refactoring in sorted_refactorings:
+            if self.validate_refactoring(refactoring, segment_id, filepath, code_divider):
+                self.apply_refactoring(refactoring, filepath, segment_id, code_divider, remember=True)
+                self.git_repository.commit_changes(refactoring.evaluation.description)
+                break
+
+    def apply_refactoring(self, refactoring: Refactoring, filepath, segment_id: int, code_divider: CodeDivider, remember: bool = True):
+        refactored_file = code_divider.replace_segment(segment_id, refactoring.new_code)
+        self.__write_file(filepath, refactored_file)
+
+    def validate_refactoring(self, refactoring: Refactoring, segment_id: int, filepath: str, code_divider: CodeDivider) -> bool:
+        original_code = self.__read_file(filepath)
+        self.apply_refactoring(refactoring, filepath, segment_id, code_divider, remember=False)
+
         if not Compiler.try_compile_file(filepath):
+            input("Press Enter to continue...")
+            self.__write_file(filepath, original_code) # Restore the original code
+            CLI.print_debug(f"Refactoring '{refactoring.evaluation.description}' failed compilation.")
             return False
-        
-        if self.tester.test_changed():
-            return False
-        
-        return True
-    
+
+        tests_changed = self.tester.test_changed()
+        if tests_changed:
+            CLI.print_debug(f"Refactoring '{refactoring.evaluation.description}' failed tests.")
+        self.__write_file(filepath, original_code) # Restore the original code
+        return not tests_changed
+
     def format_timespan(self, seconds: float) -> str:
         return str(timedelta(seconds=seconds))
+
+    def __read_file(self, filepath: str) -> str:
+        with open(filepath, "r") as f:
+            return f.read()
+
+    def __write_file(self, filepath: str, content: str):
+        with open(filepath, "w") as f:
+            f.write(content)
+
+    def print_available_categories(self):
+        for i, refactoring_generator in enumerate(self.refactoring_generators):
+            print(f"Segment {i+1}: {', '.join([category.get_name() for category in refactoring_generator.categories])}")

@@ -1,15 +1,14 @@
 import difflib
 
-from refactoring.refactoring_evaluation import RefactoringEvaluation 
+from refactoring.refactoring_evaluation import RefactoringEvaluation
+
 
 class Refactoring:
     """ Base class representing a refactoring operation."""
-    def __init__(self, filepath: str, old_code: str, new_code: str):
-        self.filepath = filepath
+    def __init__(self, old_code: str, new_code: str):
         self.old_code = old_code
         self.new_code = new_code
         self.evaluation = None
-        self.commit_hash: str = None
 
     def get_diff(self) -> str:
         """Returns a unified diff between the old and new code.
@@ -26,46 +25,24 @@ class Refactoring:
         )
         return '\n'.join(diff)
 
-    def execute(self) -> None:
-        """ Execute the refactoring on the Python file. """
-        self.write_file(self.filepath, self.new_code)
-
-    def revert(self) -> None:
-        """ Revert the refactoring on the Python file. """
-        self.write_file(self.filepath, self.old_code)
-
     def set_evaluation(self, evaluation: RefactoringEvaluation) -> None:
         """ Set the evaluation for the refactoring. """
         self.evaluation = evaluation
 
     def to_dict(self) -> dict:
         return {
-            "filepath": self.filepath,
             "old_code": self.old_code,
             "new_code": self.new_code,
             "evaluation": self.evaluation.to_dict() if self.evaluation else None,
-            "commit_hash": self.commit_hash
         }
     
     @classmethod
     def from_dict(cls, data: dict) -> 'Refactoring':
         refactoring = cls(
-            filepath=data["filepath"],
             old_code=data["old_code"],
             new_code=data["new_code"]
         )
         if data.get("evaluation"):
             refactoring.evaluation = RefactoringEvaluation.from_dict(data["evaluation"])
-        refactoring.commit_hash = data.get("commit_hash")
         return refactoring
     
-    def write_file(self, filepath: str, content: str) -> None:
-        """Writes the given content to the specified file.
-
-        Args:
-            filepath (str): The path to the file to write the content to. 
-            content (str): The content to write to the file.
-        """
-        with open(filepath, 'w') as file:
-            file.write(content)
-

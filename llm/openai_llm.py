@@ -40,7 +40,7 @@ class OpenAILLM(LLM):
         )
 
         elapsed_time = time.time() - start_time
-        self.__log_response_stats(elapsed_time, response)
+        # self.__log_response_stats(elapsed_time, response)
 
         
         if response.choices[0].finish_reason == "tool_calls":

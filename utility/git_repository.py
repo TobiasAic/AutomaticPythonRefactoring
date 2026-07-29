@@ -1,6 +1,9 @@
 from git import Repo
 from git.exc import InvalidGitRepositoryError
 
+from utility.cli import CLI
+
+
 class GitRepository:
     """ A wrapper class to access GitPython functionality in a more user-friendly way. """
     def __init__(self, repo_path: str):
@@ -40,6 +43,7 @@ class GitRepository:
         try:
             new_branch = self.repo.create_head(branch_name)
             new_branch.checkout()
+            CLI.print_debug(f"Successfully created and switched to branch '{branch_name}'")
         except Exception as e:
             raise Exception(f"Failed to create and switch to branch '{branch_name}': {str(e)}")
 

@@ -1,13 +1,14 @@
 import argparse
 from pathlib import Path
 
-from utility.config import load_from_toml
+from llm.llm_presets import qwen3_7_plus_config
+from llm.openai_llm import OpenAILLM
 from refactoring_system import RefactoringSystem
 from utility.cli import CLI
-
+from utility.config import load_from_toml
 
 if __name__ == '__main__':
-    # CLI.set_debug_mode(True)
+    CLI.set_debug_mode(True)
     parser = argparse.ArgumentParser(description='Automatic Python Refactoring Tool')
     parser.add_argument('config_path', help='Path to config file')
     args = parser.parse_args()
@@ -18,5 +19,7 @@ if __name__ == '__main__':
     print("Running the refactoring system with the following parameters:")
     print(str(config))
 
-    refactoring_system = RefactoringSystem(config)
+    llm = OpenAILLM(qwen3_7_plus_config)
+
+    refactoring_system = RefactoringSystem(config, llm, 1)
     refactoring_system.run()

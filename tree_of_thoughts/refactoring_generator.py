@@ -1,19 +1,22 @@
-from typing import List
 import json
-from dataclasses import dataclass
-from textwrap import dedent
 import random
+from textwrap import dedent
 
+from llm.llm import LLM
+from llm.llm_types import ToolCall
+from refactoring.extract_method_refactoring import ExtractMethodTool
 from refactoring.multi_rename_refactoring import MultiRenameTool
 from refactoring.refactoring import Refactoring
 from refactoring.rename_refactoring import RenameTool
-from refactoring.extract_method_refactoring import ExtractMethodTool
-from llm.llm_types import ToolCall
+from tree_of_thoughts.refactoring_category import (
+    ControlFlowCategory,
+    ExpressionCategory,
+    MethodStructureCategory,
+    NamingCategory,
+    TypeDocumentationCategory,
+)
 from utility.cli import CLI
-from llm.openai_llm import OpenAILLM
-from llm.llm_presets import big_pickle_config
-from llm.llm import LLM
-from tree_of_thoughts.refactoring_category import ControlFlowCategory, MethodStructureCategory, ExpressionCategory, TypeDocumentationCategory, NamingCategory
+
 
 class RefactoringGenerator:
     prompt = dedent("""
@@ -59,7 +62,7 @@ class RefactoringGenerator:
             raise ValueError(f"Count {count} exceeds the number of available categories {len(self.categories)} or is not positive.")
         self.count = count
 
-    def generate_refactorings(self, code_segment: str, filepath: str, commit_history: list) -> List[Refactoring]:
+    def generate_refactorings(self, code_segment: str, commit_history: list) -> list[Refactoring]:
         """Generate refactorings from different categories for a given code segment using the LLM.
 
         Args:
@@ -80,6 +83,9 @@ class RefactoringGenerator:
 
         round_categories = random.sample(self.categories, min(self.count, len(self.categories)))
 
+        if len(round_categories) != len(self.categories):
+            CLI.print_debug(f"Selected categories for this round: {', '.join([category.get_name() for category in round_categories])}")
+
         tools = [category.get_tools() for category in round_categories]
 
         prompts = []
@@ -95,14 +101,14 @@ class RefactoringGenerator:
 
         refactorings = []
         for i, response in enumerate(llm_responses): 
-            if response.text == "NO_REFACTORING":
+            if response.text is not None and response.text.strip().endswith("NO_REFACTORING"):
                 CLI.print_debug(f"No meaningful refactoring found for {round_categories[i].get_name()}.")
                 self.categories.remove(round_categories[i]) # Remove the category from future consideration
                 refactoring = None
             elif response.text is not None:
-                refactoring = self.__handle_string_response(response.text, code_segment, filepath)
+                refactoring = self.__handle_string_response(response.text, code_segment)
             elif response.tool_call is not None:
-                refactoring = self.__handle_tool_call_response(response.tool_call, filepath)
+                refactoring = self.__handle_tool_call_response(response.tool_call, code_segment)
             else:
                 raise ValueError(f"Unexpected response type from LLM: {type(response)}. Response content: {response}")
 
@@ -111,26 +117,26 @@ class RefactoringGenerator:
 
         return refactorings
     
-    def __handle_string_response(self, response: str, code_segment: str, filepath: str) -> str|None:
+    def __handle_string_response(self, response: str, code_segment: str) -> str|None:
         """ Generate a Refactoring object from a string response from the LLM. """
         try:
             refactored_code = self.extract_python_code(response)
         except ValueError as e:
             CLI.print_debug(f"Failed to extract Python code from LLM response: {response}")
             return None
-        return Refactoring(filepath, code_segment, refactored_code)
+        return Refactoring(code_segment, refactored_code)
     
-    def __handle_tool_call_response(self, tool_call: ToolCall, filepath: str) -> Refactoring|None:
+    def __handle_tool_call_response(self, tool_call: ToolCall, code_segment: str) -> Refactoring|None:
         """ Generate a Refactoring object from a tool call response from the LLM. """
         arguments = json.loads(tool_call.arguments)
         CLI.print_debug(f"Received tool call for '{tool_call.name}' with arguments: {arguments}")
         try:
             if tool_call.name == "rename":
-                    return RenameTool.call(filepath=filepath, arguments=arguments)
+                    return RenameTool.call(code_segment=code_segment, arguments=arguments)
             if tool_call.name == "extract_method":
-                    return ExtractMethodTool.call(filepath=filepath, arguments=arguments)
+                    return ExtractMethodTool.call(code_segment=code_segment, arguments=arguments)
             if tool_call.name == "multi_rename":
-                    return MultiRenameTool.call(filepath=filepath, arguments=arguments)
+                    return MultiRenameTool.call(code_segment=code_segment, arguments=arguments)
             else:
                 CLI.print_error(f"Received tool call for unknown tool '{tool_call.name}'. Response content: {tool_call}")
                 return None

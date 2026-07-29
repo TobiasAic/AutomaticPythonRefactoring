@@ -32,6 +32,9 @@ class ExtractMethodRefactoring(RopeRefactoring):
         changes = extract_method.get_changes(refactoring_arguments.new_name)
         project.do(changes)
 
+    def tool_name(self) -> str:
+        return "Extract Method"
+
     def __calculate_offset_for_line(self, filepath: str, line_number: int, include_line: bool = False) -> int:
         with open(filepath, "r") as file:
             lines = file.readlines()

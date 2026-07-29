@@ -1,8 +1,12 @@
-from refactoring.extract_method_refactoring import ExtractMethodRefactoring, ExtractMethodArguments
-from tests.unit.refactoring.shared import example_code_file, compare_files
+from refactoring.extract_method_refactoring import (
+    ExtractMethodArguments,
+    ExtractMethodRefactoring,
+)
+from tests.unit.refactoring.shared import example_code_file_path, read_file
 
-def test_extract_method_refactoring(example_code_file):
-    extract_method_refactoring = ExtractMethodRefactoring(filepath=example_code_file, refactoring_arguments=ExtractMethodArguments(start_line=45, end_line=47, new_name="extracted_method"))
-    extract_method_refactoring.execute()
-    assert compare_files(example_code_file, "tests/test_files/extracted_method.py")
-    extract_method_refactoring.revert()
+
+def test_extract_method_refactoring():
+    original_code = read_file(example_code_file_path)
+    extract_method_refactoring = ExtractMethodRefactoring(original_code, refactoring_arguments=ExtractMethodArguments(start_line=45, end_line=47, new_name="extracted_method"))
+    expected_code = read_file("tests/test_files/extracted_method.py")
+    assert extract_method_refactoring.new_code == expected_code

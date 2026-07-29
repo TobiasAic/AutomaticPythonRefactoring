@@ -1,128 +1,203 @@
+import difflib
+
 import libcst as cst
-from libcst.metadata import MetadataWrapper, PositionProvider
-import re
+from libcst.metadata import CodePosition, CodeRange, PositionProvider
+
 
 class CodeDivider:
-    def __init__(self, code: str):
-        self.code = code
-        self.segments = self.divide_code(code)
+    def __init__(self, code: str, max_lines: int = 250):
+        self.segments = self.__divide_code(code, max_lines)
 
-    def get_segments(self) -> list[str]:
-        """Get the code in segments of single functions, classes and the code in-between.
+    def get_segments_with_id(self) -> dict[int, str]:
+        """Returns a dictionary mapping segment IDs to code segments."""
+        return {i: segment for i, segment in enumerate(self.segments)}
 
-        Returns:
-            list[str]: A list of code segments, each representing a function, class, or intermediate code snippet. 
-        """
-        return self.segments
+    def get_number_of_segments(self) -> int:
+        """Returns the number of code segments."""
+        return len(self.segments)
 
     def get_code(self) -> str:
-        return self.code
+        """ Returns the complete code reconstructed from the segments. """
+        return ''.join(self.segments)
 
-    def replace_segment(self, old_segment: str, new_segment: str) -> None:
-        """Replace a specific code segment with a new segment in the original code.
+    def __count_trailing_newlines(self, code: str) -> int:
+        """Counts the number of trailing newline characters in a string."""
+        count = 0
+        for char in reversed(code):
+            if char == '\n':
+                count += 1
+            else:
+                break
+        return count
 
-        Args:
-            old_segment (str): The code segment to be replaced. 
-            new_segment (str): The new code segment to replace the old one. 
-        """
-       # Escape special characters in the old code segment to create a safe regex pattern
-        pattern = re.escape(old_segment)
-
-        # Prepare the new segment for replacement, escaping backslashes and other potential escape sequences
-        # This step might need adjustment based on how new_segment is provided
-        safe_new_segment = new_segment.replace('\\', '\\\\')
-
-        # Replace the old segment with the new, safe segment using regex
-        replaced_code = re.sub(pattern, safe_new_segment, self.code, flags=re.DOTALL)
-        self.code = replaced_code
-
-    def divide_code(self, code: str) -> list: # This function is from Siegwardt's system
-        """Divides the given code into functions, classes, and intermediate code snippets.
+    def replace_segment(self, segment_id: int, new_segment: str, remember: bool = True) -> str:
+        """Replaces a code segment at the specified index with a new segment and returns the complete code.
 
         Args:
-            code (str): The code to be divided. 
+            segment_id: The index of the segment to replace.
+            new_segment: The new code segment.
+            remember: If True, persist the replacement in self.segments.
 
         Returns:
-            list: A list containing the divided functions, classes, and intermediate code snippets.
+            The complete code reconstructed from the updated segments.
         """
-        cst_tree = cst.parse_module(code)
-        wrapper = MetadataWrapper(cst_tree)
-        wrapper.resolve(PositionProvider)
+        if segment_id < 0 or segment_id >= len(self.segments):
+            raise IndexError(
+                f"Segment ID {segment_id} is out of range. Valid range is 0 to {len(self.segments) - 1}.")
 
-        functions = []
-        classes = []
-        intermediate_code = []
-        last_line = 0
-        function_depth = 0  # Track the depth of nested functions
-        current_indentation = 0  # Track the current indentation level
+        old_trailing_newline = self.__count_trailing_newlines(self.segments[segment_id])
+        new_segment = new_segment.rstrip("\n") + "\n" * old_trailing_newline 
 
-        class FunctionClassVisitor(cst.CSTVisitor):
-            METADATA_DEPENDENCIES = (PositionProvider,)
+        updated_segments = self.segments.copy()
+        updated_segments[segment_id] = new_segment
 
-            def visit_IndentedBlock(self, node: cst.IndentedBlock) -> bool:
-                nonlocal current_indentation
-                current_indentation += 1
-                return True  # Continue visiting children
+        if remember:
+            self.segments = updated_segments
 
-            def leave_IndentedBlock(self, original_node: cst.IndentedBlock) -> None:
-                nonlocal current_indentation
-                current_indentation -= 1
+        return "".join(updated_segments)
 
-            def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
-                nonlocal last_line, function_depth
-                function_depth += 1
+    def __divide_code(self, code: str, max_lines: int = 250) -> list:
+        atomic_blocks = self.__divide_into_atomic_blocks(code)
+        merged_atomic_blocks = self.__merge_empty_blocks(atomic_blocks)
+        return self.__merge_to_aproximate_size(merged_atomic_blocks, max_lines)
 
-                # Process only top-level functions (not inside classes)
-                if function_depth == 1 and current_indentation == 0:
-                    start_line = self.get_metadata(PositionProvider, node).start.line
-                    end_line = self.get_metadata(PositionProvider, node).end.line
+    def __merge_to_aproximate_size(self, blocks: list[str], max_lines: int) -> list[str]:
+        """ Merges blocks to ensure that each block has approximately max_lines lines. """
+        merged_blocks = []
+        current_block = ""
 
-                    # Adjust start_line to include decorators
-                    while start_line > 1 and code.splitlines()[start_line - 2].strip().startswith('@'):
+        for block in blocks:
+            if len(current_block.splitlines()) + len(block.splitlines()) <= max_lines:
+                current_block += block
+            else:
+                if current_block:
+                    merged_blocks.append(current_block)
+                current_block = block
+
+        if current_block:
+            merged_blocks.append(current_block)
+
+        return merged_blocks
+
+    def __merge_empty_blocks(self, blocks: list[str]) -> list[str]:
+        """ Merges empty blocks with their preceding non-empty block. """
+        merged_blocks = []
+        for block in blocks:
+            if block.strip() == "":
+                if merged_blocks:
+                    merged_blocks[-1] += block  # Merge with the last non-empty block
+                else:
+                    merged_blocks.append(block)  # If it's the first block, just add it
+            else:
+                merged_blocks.append(block)
+        return merged_blocks
+
+    def __divide_into_atomic_blocks(self, code: str) -> list[str]:
+        definition_ranges = self.__find_function_and_class_positions(code)
+        lines = code.splitlines(keepends=True)
+
+        atomic_blocks = []
+        start_line = 1
+        for definition_range in definition_ranges:
+            # Add the code before the definition as a separate block
+            if start_line < definition_range.start.line:
+                atomic_blocks.append("".join(lines[start_line - 1:definition_range.start.line - 1]))
+
+            # Add the definition itself as a separate block
+            atomic_blocks.append("".join(lines[definition_range.start.line - 1:definition_range.end.line]))
+
+            start_line = definition_range.end.line + 1
+
+        # Add any remaining code after the last definition as a separate block
+        if start_line <= len(lines):
+            atomic_blocks.append("".join(lines[start_line - 1:len(lines)]))
+
+        return atomic_blocks 
+
+    def __find_function_and_class_positions(self, code: str) -> list[CodeRange]:
+        """ Finds the start and end positions of function and class definitions in the code, including decorators, leading and trailing comments. """
+        tree = cst.parse_module(code)
+        wrapper = cst.MetadataWrapper(tree, unsafe_skip_copy=True)
+        positions = wrapper.resolve(PositionProvider)
+
+        lines = code.splitlines(keepends=True)
+
+        definition_ranges: list[CodeRange] = []
+
+        for statement in tree.body:
+            if isinstance(statement, (cst.ClassDef, cst.FunctionDef)):
+                position = positions[statement]
+                start = position.start
+                end = position.end
+
+                # adjust start_line if there are decorators, to include them in the definition.
+                if statement.decorators:
+                    start = positions[statement.decorators[0]].start
+
+                # adjust start_line to include preceding comments, if any.
+                start_line = start.line - 1
+                while start_line > 0:
+                    previous_line = lines[start_line - 1]
+
+                    if previous_line.lstrip().startswith("#"):
+                        start = CodePosition(line=start_line, column=0)
                         start_line -= 1
+                    else:
+                        break
 
-                    if start_line > last_line + 1:
-                        intermediate_snippet = '\n'.join(code.splitlines()[last_line:start_line - 1]).strip()
-                        if intermediate_snippet:
-                            intermediate_code.append(intermediate_snippet)
+                # If the end line has a comment, include it in the definition.
+                current_end_line = lines[end.line - 1] 
+                if current_end_line[end.column:].strip().startswith("#"):
+                    end = CodePosition(line=end.line, column=len(current_end_line.rstrip("\r\n")))
 
-                    function_code = '\n'.join(code.splitlines()[start_line - 1:end_line]).strip()
-                    functions.append(function_code)
-                    last_line = end_line
+                definition_ranges.append(CodeRange(start=start, end=end))
 
-                # Do not descend into nested functions
-                return function_depth == 1
+        return definition_ranges
 
-            def leave_FunctionDef(self, original_node: cst.FunctionDef) -> None:
-                nonlocal function_depth
-                function_depth -= 1
+    def print_segments(self):
+        """Prints the code segments with their corresponding IDs."""
+        for i, segment in enumerate(self.segments):
+            print(f"Segment {i}:\n{segment}{'-'*40}")
 
-            def visit_ClassDef(self, node: cst.ClassDef) -> None:
-                nonlocal last_line
-                start_line = self.get_metadata(PositionProvider, node).start.line
-                end_line = self.get_metadata(PositionProvider, node).end.line
 
-                # Adjust start_line to include decorators
-                while start_line > 1 and code.splitlines()[start_line - 2].strip().startswith('@'):
-                    start_line -= 1
+if __name__ == "__main__":
+    # /home/tobias/Desktop/requests/requests-2.34.2/src/requests/utils.py
+    # tests/test_files/example.py
+    with open("/home/tobias/Desktop/requests/requests-2.34.2/src/requests/utils.py", "r") as f:
+        code_file = f.read()
 
-                if start_line > last_line + 1:
-                    intermediate_snippet = '\n'.join(code.splitlines()[last_line:start_line - 1]).strip()
-                    if intermediate_snippet:
-                        intermediate_code.append(intermediate_snippet)
+    code_divider = CodeDivider(code_file, max_lines=250)
 
-                class_code = '\n'.join(code.splitlines()[start_line - 1:end_line]).strip()
-                classes.append(class_code)
-                last_line = end_line
+    code_divider.print_segments()
 
-        visitor = FunctionClassVisitor()
-        wrapper.visit(visitor)
+    new_code = code_divider.get_code()
+    print(len(code_file.splitlines()), "lines in original code")
+    print(len(new_code.splitlines()), "lines in new code")
 
-        # Capture any remaining code after the last function/class
-        lines = code.splitlines()
-        if last_line < len(lines):
-            remaining_code = '\n'.join(lines[last_line:]).strip()
-            if remaining_code:
-                intermediate_code.append(remaining_code)
+    import difflib
 
-        return functions + classes + intermediate_code 
+    print(
+        "".join(
+            difflib.unified_diff(code_file.splitlines(1), code_divider.get_code().splitlines(1))
+        )
+    )
+
+    """
+    with open("test1.txt", "r") as f:
+       old_code = f.read() 
+
+    old_code  = code_divider.get_segments()[0]  # Get the first segment for testing
+    
+    with open("test2.txt", "r") as f:
+       new_code = f.read()
+
+    code_divider.replace_segment(old_code, new_code)
+
+    import difflib
+
+    print(
+        "".join(
+            difflib.unified_diff(code_file.splitlines(1), code_divider.get_code().splitlines(1))
+        )
+    )
+    """

@@ -1,8 +1,12 @@
-from utility.tester import Tester
 import os
 import subprocess
-from pytest import ExitCode
 from pathlib import Path
+
+from pytest import ExitCode
+
+from utility.cli import CLI
+from utility.tester import Tester
+
 
 class PytestTester(Tester):
     def __init__(self, pyenv_name: str, test_file_path: str):
@@ -28,10 +32,12 @@ class PytestTester(Tester):
         pytest_output = self.__run_pytest()
         changed_test_results = self.__extract_test_results(pytest_output)
 
-        if self.__compare_to_initial_results(changed_test_results):
-            return False
-        else:
-            return True 
+        results_changed = not self.__compare_to_initial_results(changed_test_results)
+
+        if results_changed:
+            CLI.print_debug(f"Current pytest results: {pytest_output.splitlines()[-1]}")
+
+        return results_changed
 
     def __run_pytest(self) -> str:
         env = os.environ.copy()

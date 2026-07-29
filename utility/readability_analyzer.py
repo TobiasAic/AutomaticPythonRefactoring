@@ -1,9 +1,13 @@
 import json
-from radon.complexity import cc_visit
-from radon.metrics import mi_visit, h_visit   
-from radon.raw import analyze as raw_analyze
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
+
 import matplotlib.pyplot as plt
+from radon.complexity import cc_visit
+from radon.metrics import h_visit, mi_visit
+from radon.raw import analyze as raw_analyze
+
+from utility.cli import CLI
+
 
 @dataclass
 class ReadabilityMetrics:
@@ -152,6 +156,7 @@ class ReadabilityAnalyzer:
                 for path, metrics_list in self.metrics.items()
             }
             json.dump(serializable_metrics, file)
+        CLI.print_debug(f"Saved readability metrics to {filepath}")
 
     def load(self, filepath: str):
         """Load the metrics from the specified path

@@ -41,3 +41,7 @@ replays/
 refactoring_collection/
 
 .VSCodeCounter/
+refactoring_collection_deepseek_v4_pro/
+refactoring_collection_qwen3_7_plus/
+refactoring_collection_qwen_test/
+refactoring_collection_test/
