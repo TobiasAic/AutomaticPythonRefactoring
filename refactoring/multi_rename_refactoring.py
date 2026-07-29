@@ -1,12 +1,13 @@
 """ This file contains the implementation of the Multi Rename refactoring and a corresponding tool for an LLM to call. """
-from rope.base.project import Project
 from rope.base import libutils
+from rope.base.project import Project
 from rope.refactor.rename import Rename
 
-from utility.cli import CLI
-from refactoring.rope_refactoring import RopeRefactoring
-from refactoring.rename_shared import RenameArguments, calculate_offset
 from refactoring.refactoring_tool import RefactoringTool
+from refactoring.rename_shared import RenameArguments, calculate_offset
+from refactoring.rope_refactoring import RopeRefactoring
+from utility.cli import CLI
+
 
 class MultiRenameRefactoring(RopeRefactoring[list[RenameArguments]]):
     def execute_rope_refactoring(self, project: Project, filepath: str, refactoring_arguments: list[RenameArguments]) -> None:
@@ -76,7 +77,7 @@ class MultiRenameTool(RefactoringTool):
                 }
                 }
 
-    def call(filepath: str, arguments: dict) -> MultiRenameRefactoring:
+    def call(code_segment: str, arguments: dict) -> MultiRenameRefactoring:
         """ Calls the Multi Rename refactoring with the given arguments from the LLM. """
         changes = arguments.get("changes", [])
         rename_arguments = []
@@ -86,8 +87,8 @@ class MultiRenameTool(RefactoringTool):
             new_name = change.get("new_name")
             rename_arguments.append(RenameArguments(line_number=line_number, old_name=old_name, new_name=new_name))
         try:
-            return MultiRenameRefactoring(filepath, rename_arguments)
+            return MultiRenameRefactoring(code_segment, rename_arguments)
         except Exception as e:
-            CLI.print_error(f"Failed to create MultiRenameRefactoring for file {filepath} with rename arguments {rename_arguments}. Error: {e}")
+            CLI.print_error(f"Failed to create MultiRenameRefactoring for code_segment with rename arguments {rename_arguments}. Error: {e}")
             return None
 

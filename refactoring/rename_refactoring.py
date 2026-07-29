@@ -1,10 +1,12 @@
-from refactoring.rope_refactoring import RopeRefactoring
-from rope.base.project import Project
 from rope.base import libutils
+from rope.base.project import Project
 from rope.refactor.rename import Rename
-from utility.cli import CLI
-from refactoring.rename_shared import RenameArguments, calculate_offset
+
 from refactoring.refactoring_tool import RefactoringTool
+from refactoring.rename_shared import RenameArguments, calculate_offset
+from refactoring.rope_refactoring import RopeRefactoring
+from utility.cli import CLI
+
 
 class RenameRefactoring(RopeRefactoring[RenameArguments]):
     def execute_rope_refactoring(self, project: Project, filepath: str, refactoring_arguments: RenameArguments):
@@ -55,13 +57,13 @@ class RenameTool(RefactoringTool):
         },
     }
 
-    def call(filepath: str, arguments: dict) -> RenameRefactoring:
+    def call(code_segment: str, arguments: dict) -> RenameRefactoring:
         """ Calls the Rename refactoring with the given arguments from the LLM. """
         line_number = int(arguments.get("line_number"))
         old_name = arguments.get("old_name")
         new_name = arguments.get("new_name")
         try:
-            return RenameRefactoring(filepath, RenameArguments(line_number=line_number, old_name=old_name, new_name=new_name))
+            return RenameRefactoring(code_segment, RenameArguments(line_number=line_number, old_name=old_name, new_name=new_name))
         except Exception as e:
-            CLI.print_error(f"Failed to create RenameRefactoring for file {filepath} at line {line_number} renaming '{old_name}' to '{new_name}'. Error: {e}")
+            CLI.print_error(f"Failed to create RenameRefactoring for code_segment at line {line_number} renaming '{old_name}' to '{new_name}'. Error: {e}")
             return None

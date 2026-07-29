@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass
 class RenameArguments:
     """ Arguments from the LLM for the Rename and MultiRename refactoring. """

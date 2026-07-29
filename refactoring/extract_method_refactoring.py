@@ -1,13 +1,15 @@
 """ This file contains the implementation of the Extract Method refactoring and a corresponding tool for an LLM to call. """
 
-from rope.base.project import Project
-from rope.base import libutils
-from rope.refactor.extract import ExtractMethod
 from dataclasses import dataclass
 
+from rope.base import libutils
+from rope.base.project import Project
+from rope.refactor.extract import ExtractMethod
+
+from refactoring.refactoring_tool import RefactoringTool
 from refactoring.rope_refactoring import RopeRefactoring
 from utility.cli import CLI
-from refactoring.refactoring_tool import RefactoringTool
+
 
 @dataclass
 class ExtractMethodArguments:
@@ -73,14 +75,14 @@ class ExtractMethodTool(RefactoringTool):
         },
     }
 
-    def call(filepath: str, arguments: dict) -> ExtractMethodRefactoring:
+    def call(code_segment: str, arguments: dict) -> ExtractMethodRefactoring:
         """ Calls the Extract Method refactoring with the given arguments from the LLM. """
         start_line = int(arguments.get("start_line"))
         end_line = int(arguments.get("end_line"))
         new_name = arguments.get("new_name")
         try:
-            return ExtractMethodRefactoring(filepath, ExtractMethodArguments(start_line=start_line, end_line=end_line, new_name=new_name))
+            return ExtractMethodRefactoring(code_segment, ExtractMethodArguments(start_line=start_line, end_line=end_line, new_name=new_name))
         except Exception as e:
-            CLI.print_error(f"Failed to create ExtractMethodRefactoring for file {filepath} from line {start_line} to line {end_line} with new method name '{new_name}'. Error: {e}")
+            CLI.print_error(f"Failed to create ExtractMethodRefactoring for code_segment from line {start_line} to line {end_line} with new method name '{new_name}'. Error: {e}")
             return None
 
