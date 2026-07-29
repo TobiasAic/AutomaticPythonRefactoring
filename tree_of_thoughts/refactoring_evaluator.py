@@ -1,12 +1,13 @@
+import json
 from abc import ABC, abstractmethod
 from typing import Optional
-import json
 
 from llm.llm_types import LLMResponse
 from llm.openai_llm import OpenAILLM
 from refactoring.refactoring import Refactoring
 from refactoring.refactoring_evaluation import RefactoringEvaluation
 from utility.readability_analyzer import ReadabilityAnalyzer
+
 
 class RefactoringEvaluator(ABC):
     def __init__(self, llm: OpenAILLM):
