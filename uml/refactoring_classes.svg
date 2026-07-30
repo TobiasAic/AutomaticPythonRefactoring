@@ -62,14 +62,14 @@
 <!-- refactoring.refactoring_tool.RefactoringTool -->
 <g id="node9" class="node">
 <title>refactoring.refactoring_tool.RefactoringTool</title>
-<polygon fill="none" stroke="black" points="2371.5,-160.1 2371.5,-243.9 2601.5,-243.9 2601.5,-160.1 2371.5,-160.1"/>
+<polygon fill="none" stroke="black" points="2353.5,-160.1 2353.5,-243.9 2619.5,-243.9 2619.5,-160.1 2353.5,-160.1"/>
 <text text-anchor="start" x="2441.5" y="-228.7" font-family="Times,serif" font-size="14.00">RefactoringTool</text>
-<polyline fill="none" stroke="black" points="2371.5,-220.9 2601.5,-220.9 "/>
-<polyline fill="none" stroke="black" points="2371.5,-196.1 2601.5,-196.1 "/>
-<text text-anchor="start" x="2379.5" y="-181.9" font-family="Times,serif" font-style="italic" font-size="14.00">call</text>
-<text text-anchor="start" x="2400.5" y="-181.9" font-family="Times,serif" font-size="14.00">(filepath: str, arguments: dict): Self</text>
-<text text-anchor="start" x="2379.5" y="-167.9" font-family="Times,serif" font-style="italic" font-size="14.00">get_description</text>
-<text text-anchor="start" x="2464.5" y="-167.9" font-family="Times,serif" font-size="14.00">(): dict</text>
+<polyline fill="none" stroke="black" points="2353.5,-220.9 2619.5,-220.9 "/>
+<polyline fill="none" stroke="black" points="2353.5,-196.1 2619.5,-196.1 "/>
+<text text-anchor="start" x="2361.5" y="-181.9" font-family="Times,serif" font-style="italic" font-size="14.00">call</text>
+<text text-anchor="start" x="2382.5" y="-181.9" font-family="Times,serif" font-size="14.00">(code_segment: str, arguments: dict): Self</text>
+<text text-anchor="start" x="2361.5" y="-167.9" font-family="Times,serif" font-style="italic" font-size="14.00">get_description</text>
+<text text-anchor="start" x="2446.5" y="-167.9" font-family="Times,serif" font-size="14.00">(): dict</text>
 </g>
 <!-- refactoring.extract_method_refactoring.ExtractMethodTool&#45;&gt;refactoring.refactoring_tool.RefactoringTool -->
 <g id="edge2" class="edge">
