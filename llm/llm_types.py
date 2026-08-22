@@ -13,6 +13,7 @@ class LLMConfig:
     api_key: str
     base_url: str
     model_name: str
+    timeout: int = 600  # Default timeout in seconds for LLM requests
 
 
 @dataclass
