@@ -1,11 +1,13 @@
-from openai import OpenAI
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+from openai import OpenAI
 from tqdm import tqdm
 
 from llm.llm import LLM
 from llm.llm_types import LLMConfig, LLMResponse, ToolCall
 from utility.cli import CLI
+
 
 class OpenAILLM(LLM):
     """ Implementation of the LLM interface for interacting with the old completions OpenAI API. """

@@ -1,7 +1,7 @@
 """ Commonly used LLM configurations for convenience. """
 
 from llm.openai_llm import LLMConfig
-from utility.enviroment_variables import get_env_variable
+from utility.environment_variables import get_env_variable
 
 big_pickle_config = LLMConfig(
     api_key=get_env_variable("OPENCODE_API_KEY"),

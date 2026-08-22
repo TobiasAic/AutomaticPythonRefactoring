@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 
 from llm.llm_types import LLMResponse
 
+
 class LLM(ABC):
     """ Abstract base class for all LLM implementations. Defines the interface that all LLMs must implement. """
     @abstractmethod
