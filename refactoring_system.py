@@ -58,6 +58,8 @@ class RefactoringSystem:
             CLI.print_error(
                 f"Code was incorrectly divided into {code_divider.get_number_of_segments()} segments for {filepath}.")
 
+        self.refactoring_generators = [RefactoringGenerator(self.llm, self.count) for _ in range(code_divider.get_number_of_segments())]
+
         for iteration in range(self.config.max_iterations):
             iteration_start = time.time()
             CLI.print_banner(
@@ -67,8 +69,6 @@ class RefactoringSystem:
                 f"Iteration {iteration + 1} completed in {self.format_timespan(time.time() - iteration_start)}")
 
     def do_iteration(self, filepath: str, code_divider: CodeDivider):
-        self.refactoring_generators = [RefactoringGenerator(self.llm, self.count) for _ in range(code_divider.get_number_of_segments())]
-
         self.print_available_categories()
 
         for segment_id, segment in code_divider.get_segments_with_id().items():
@@ -76,8 +76,6 @@ class RefactoringSystem:
                 self.refactor_segment(segment, filepath, segment_id, code_divider, self.refactoring_generators[segment_id])
             else:
                 CLI.print_debug(f"No more categories available for segment {segment_id+1}. Skipping refactoring for this segment.")
-
-        self.print_available_categories()
 
     def refactor_segment(self, code_segment: str, filepath: str, segment_id: int, code_divider: CodeDivider, refactoring_generator: RefactoringGenerator):
         CLI.print_banner(
