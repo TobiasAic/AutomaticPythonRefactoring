@@ -28,7 +28,11 @@ class PytestTester(Tester):
         Returns:
             bool: True if the test results have changed, False otherwise.
         """
-        pytest_output = self.__run_pytest()
+        try:
+            pytest_output = self.__run_pytest()
+        except Exception as e:
+            CLI.print_debug(f"Pytest execution failed: {e}")
+            return True  # If pytest fails to run, consider the results changed
         changed_test_results = self.__extract_test_results(pytest_output)
 
         results_changed = not self.__compare_to_initial_results(changed_test_results)

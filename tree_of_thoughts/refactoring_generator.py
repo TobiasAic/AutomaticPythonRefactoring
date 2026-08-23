@@ -31,9 +31,9 @@ class RefactoringGenerator:
     The refactoring must:
     - Improve readability.
     - Preserve behavior exactly.
-    - Avoid changing public APIs.
-    - Avoid adding imports.
-    - Avoid renaming functions, parameters, or classes.
+    - Not change public APIs.
+    - Not add imports.
+    - Not rename functions, parameters, or classes.
     - Not repeat a refactoring already performed in the commit history.
 
     Commit history:
