@@ -9,10 +9,10 @@ class RefactoringEvaluation:
     grade: int
 
     def __post_init__(self):
-        """ Ensure that the grade is an integer between 0 and 10."""
-        if not (0 <= self.grade <= 10):
-            raise ValueError("Grade must be an integer between 0 and 10.")
-        
+        """ Ensure that the grade is an integer between 1 and 5."""
+        if not (1 <= self.grade <= 5):
+            raise ValueError("Grade must be an integer between 1 and 5.")
+
     def sorting_value(self) -> int:
         """ Sort incorrect evaluations to the end of the list, and correct evaluations by their grade. """
         if not self.correct:

@@ -17,14 +17,14 @@ class IndividualRefactoringEvaluator(RefactoringEvaluator):
     {{
         "commit_message": "A fitting commit message describing the refactoring",
         "correct": true/false,
-        "grade": 0-10,
+        "grade": 1-5,
     }}
 
     The commit message should adhere to the Conventional Commits specification with a few additions as provided here:
     {conventional_commits_specification}
 
     The correct field should only be true if the refactoring does not alter the behavior of the code.
-    The grade should be an integer between 0 and 10, where 0 indicates a poor refactoring that does not improve code quality, and 10 indicates an excellent refactoring that significantly enhances code quality.
+    The grade should be an integer between 1 and 5, where 1 indicates a poor refactoring that does not improve code quality, and 5 indicates an excellent refactoring that significantly enhances code quality.
 
     Here are how some metrics changed due to the refactoring:
     {metric_improvements}
@@ -33,7 +33,7 @@ class IndividualRefactoringEvaluator(RefactoringEvaluator):
     {diff}
     """
 
-    def evaluate(self, refactoring: Refactoring) -> Optional[RefactoringEvaluation]:
+    def evaluate(self, refactoring: Refactoring) -> RefactoringEvaluation | None:
         """Generate an evaluation for a single refactoring individually. 
            If the evaluation fails None is returned. 
 
@@ -41,7 +41,7 @@ class IndividualRefactoringEvaluator(RefactoringEvaluator):
             refactoring (Refactoring): The refactoring to evaluate. 
 
         Returns:
-            Optional[RefactoringEvaluation]: The evaluation of the refactoring.
+            RefactoringEvaluation | None: The evaluation of the refactoring.
         """
         metric_improvements = self.get_metrics(refactoring)
 
@@ -86,7 +86,7 @@ class IndividualRefactoringEvaluator(RefactoringEvaluator):
             except ValueError as e:
                 CLI.print_error(f"LLM did not return a valid evaluation: {response}")
 
-    def __extract_evaluation(self, llm_response: LLMResponse) -> Optional[RefactoringEvaluation]:
+    def __extract_evaluation(self, llm_response: LLMResponse) -> RefactoringEvaluation | None:
         """Extract an evaluation from the LLM response.
 
         Args:
@@ -98,7 +98,7 @@ class IndividualRefactoringEvaluator(RefactoringEvaluator):
             ValueError: If the LLM response JSON object is missing required fields.
 
         Returns:
-            Optional[RefactoringEvaluation]: The extracted evaluation or None if the evaluation extraction fails.
+            RefactoringEvaluation | None: The extracted evaluation or None if the evaluation extraction fails.
         """
         data = self.extract_json(llm_response)
 
