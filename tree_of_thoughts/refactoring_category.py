@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 from textwrap import dedent
 
 from refactoring.extract_method_refactoring import ExtractMethodTool
@@ -32,26 +31,35 @@ from tree_of_thoughts.refactoring_suggestion import (
 )
 
 
-class RefactoringCategory(ABC):
-    @abstractmethod
+class RefactoringCategory:
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        tools: list[dict] | None = None,
+        refactoring_suggestions: list[type[RefactoringSuggestion]] | None = None,
+    ):
+        self._name = name
+        self._description = description
+        self._tools = tools or []
+        self._refactoring_suggestions = refactoring_suggestions or []
+
     def get_name(self) -> str:
-        pass
+        return self._name
 
     def get_prompt(self) -> str:
         return dedent(f"""
             Category: {self.get_name()}
 
             {self.get_description()}
-            {self.get_refactoring_suggestions()}
+            {self.get_refactoring_suggestions_string()}
         """).strip()
 
-    @abstractmethod
     def get_tools(self) -> list[dict]:
-        pass
+        return self._tools
 
-    @abstractmethod
     def get_description(self) -> str:
-        pass
+        return self._description
 
     def get_refactoring_suggestions_string(self) -> str:
         suggestions = self.get_refactoring_suggestions()
@@ -59,132 +67,86 @@ class RefactoringCategory(ABC):
             return "No specific refactoring suggestions provided."
         return "\n\n".join(f"- {suggestion.get_description()}" for suggestion in suggestions)
 
-    @abstractmethod
-    def get_refactoring_suggestions(self) -> list[RefactoringSuggestion]:
-        pass
+    def get_refactoring_suggestions(self) -> list[type[RefactoringSuggestion]]:
+        return self._refactoring_suggestions
 
 
-class ConditionalLogicCategory(RefactoringCategory):
-    def get_name(self):
-        return "CONDITIONAL_LOGIC"
+CONDITIONAL_LOGIC = RefactoringCategory(
+    name="CONDITIONAL_LOGIC",
+    description=dedent("""
+        Look only for improvements to conditional logic, including the following:
+    """).strip(),
+    refactoring_suggestions=[
+        ConsolidateConditionalExpression,
+        DecomposeConditional,
+        ReplaceExceptionWithPrecheck,
+        ReplaceNestedConditionalWithGuardClauses,
+    ],
+)
 
-    def get_description(self):
-        return dedent("""
-            Look only for improvements to conditional logic, including the following:
-        """).strip()
+CONTROL_FLOW = RefactoringCategory(
+    name="CONTROL_FLOW",
+    description=dedent("""
+        Look only for improvements to control flow, including the following:
+    """).strip(),
+    refactoring_suggestions=[
+        ReplaceControlFlagWithBreak,
+        ReplaceLoopWithPipeline,
+        SlideStatements,
+        SplitLoop,
+        SubstituteAlgorithm,
+    ],
+)
 
-    def get_tools(self):
-        return []
+METHOD_STRUCTURE = RefactoringCategory(
+    name="METHOD_STRUCTURE",
+    description=dedent("""
+        Look only for improvements to method structure, including the following:
+    """).strip(),
+    tools=[ExtractMethodTool.get_description()],
+    refactoring_suggestions=[
+        ExtractFunction,
+        InlineFunction,
+        ReplaceTempWithQuery,
+    ],
+)
 
-    def get_refactoring_suggestions(self):
-        return [
-            ConsolidateConditionalExpression,
-            DecomposeConditional,
-            ReplaceExceptionWithPrecheck,
-            ReplaceNestedConditionalWithGuardClauses,
-        ]
+EXPRESSION = RefactoringCategory(
+    name="EXPRESSION",
+    description=dedent("""
+        Look only for improvements to expressions, including the following:
+    """).strip(),
+    refactoring_suggestions=[
+        ExtractVariable,
+        InlineVariable,
+        ReplaceMagicLiteral,
+        SplitVariable,
+    ],
+)
 
+CLASS_STRUCTURE = RefactoringCategory(
+    name="CLASS_STRUCTURE",
+    description=dedent("""
+        Look only for improvements to class structure, including the following:
+    """).strip(),
+    refactoring_suggestions=[
+        ExtractClass,
+        InlineClass,
+        PreserveWholeObject,
+    ],
+)
 
-class ControlFlowCategory(RefactoringCategory):
-    def get_name(self):
-        return "CONTROL_FLOW"
-
-    def get_description(self):
-        return dedent("""
-            Look only for improvements to control flow, including the following:
-        """).strip()
-
-    def get_tools(self):
-        return []
-
-    def get_refactoring_suggestions(self):
-        return [
-            ReplaceControlFlagWithBreak,
-            ReplaceLoopWithPipeline,
-            SlideStatements,
-            SplitLoop,
-            SubstituteAlgorithm 
-        ]
-
-
-class MethodStructureCategory(RefactoringCategory):
-    def get_name(self):
-        return "METHOD_STRUCTURE"
-
-    def get_description(self):
-        return dedent("""
-            Look only for improvements to method structure, including the following:
-        """).strip()
-
-    def get_tools(self):
-        return [ExtractMethodTool.get_description()]
-
-    def get_refactoring_suggestions(self):
-        return [
-            ExtractFunction,
-            InlineFunction,
-            ReplaceTempWithQuery
-        ]
-
-
-class ExpressionCategory(RefactoringCategory):
-    def get_name(self):
-        return "EXPRESSION"
-
-    def get_description(self):
-        return dedent("""
-            Look only for improvements to expressions, including the following:
-        """).strip()
-
-    def get_tools(self):
-        return []
-
-    def get_refactoring_suggestions(self):
-        return [
-            ExtractVariable,
-            InlineVariable,
-            ReplaceMagicLiteral,
-            SplitVariable
-        ]
-
-
-class ClassStructureCategory(RefactoringCategory):
-    def get_name(self):
-        return "CLASS_STRUCTURE"
-
-    def get_description(self):
-        return dedent("""
-            Look only for improvements to class structure, including the following:
-        """).strip()
-
-    def get_tools(self):
-        return []
-
-    def get_refactoring_suggestions(self):
-        return [
-            ExtractClass,
-            InlineClass,
-            PreserveWholeObject
-        ]
-
-
-class CodeQualityCategory(RefactoringCategory):
-    def get_name(self):
-        return "CODE_QUALITY"
-
-    def get_description(self):
-        return dedent("""
-            Look only for improvements to code quality, including the following:
-        """).strip()
-
-    def get_tools(self):
-        return [MultiRenameTool.get_description()]
-
-    def get_refactoring_suggestions(self):
-        return [
-            RemoveDeadCode,
-            RenameVariable,
-            AddTypeHints,
-            ImproveMethodDocstring,
-            AddExplanatoryComment
-        ]
+CODE_QUALITY = RefactoringCategory(
+    name="CODE_QUALITY",
+    description=dedent("""
+        Look only for improvements to code quality, including the following:
+    """).strip(),
+    tools=[MultiRenameTool.get_description()],
+    refactoring_suggestions=[
+        RemoveDeadCode,
+        RenameVariable,
+        AddTypeHints,
+        ImproveMethodDocstring,
+        AddExplanatoryComment,
+    ],
+)

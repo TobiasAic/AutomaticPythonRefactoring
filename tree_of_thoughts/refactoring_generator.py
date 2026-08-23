@@ -9,12 +9,12 @@ from refactoring.multi_rename_refactoring import MultiRenameTool
 from refactoring.refactoring import Refactoring
 from refactoring.rename_refactoring import RenameTool
 from tree_of_thoughts.refactoring_category import (
-    ClassStructureCategory,
-    CodeQualityCategory,
-    ConditionalLogicCategory,
-    ControlFlowCategory,
-    ExpressionCategory,
-    MethodStructureCategory,
+    CLASS_STRUCTURE,
+    CODE_QUALITY,
+    CONDITIONAL_LOGIC,
+    CONTROL_FLOW,
+    EXPRESSION,
+    METHOD_STRUCTURE,
 )
 from utility.cli import CLI
 
@@ -64,8 +64,14 @@ class RefactoringGenerator:
 
     def __init__(self, llm: LLM, count: int = 1):
         self.llm = llm
-        self.categories = [ConditionalLogicCategory(), ControlFlowCategory(), ExpressionCategory(
-        ), MethodStructureCategory(), ClassStructureCategory(), CodeQualityCategory()]
+        self.categories = [
+            CONDITIONAL_LOGIC,
+            CONTROL_FLOW,
+            EXPRESSION,
+            METHOD_STRUCTURE,
+            CLASS_STRUCTURE,
+            CODE_QUALITY,
+        ]
         if count > len(self.categories) and count > 0:
             raise ValueError(
                 f"Count {count} exceeds the number of available categories {len(self.categories)} or is not positive.")
