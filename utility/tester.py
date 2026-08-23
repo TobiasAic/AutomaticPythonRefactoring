@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+
 class Tester(ABC):
     @abstractmethod
     def test_before(self) -> str:
@@ -8,7 +9,6 @@ class Tester(ABC):
         Returns:
             str: The summary line of the pytest output.
         """
-        pass
 
     @abstractmethod
     def test_changed(self) -> bool:
@@ -17,4 +17,4 @@ class Tester(ABC):
         Returns:
             bool: True if the test results have changed, False otherwise.
         """
-        pass
+        

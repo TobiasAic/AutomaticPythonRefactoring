@@ -8,10 +8,8 @@ class RefactoringTool(ABC):
     @abstractmethod
     def get_description() -> dict:
         """ Returns the description of the refactoring tool for the LLM. """
-        pass
 
     @staticmethod
     @abstractmethod
     def call(code_segment: str, arguments: dict) -> Self:
         """ Calls the refactoring with the given arguments from the LLM. """
-        pass

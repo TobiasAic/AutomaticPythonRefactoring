@@ -1,6 +1,8 @@
-from dataclasses import dataclass
-import tomllib
 import os
+from dataclasses import dataclass
+
+import tomllib
+
 
 @dataclass
 class Config():

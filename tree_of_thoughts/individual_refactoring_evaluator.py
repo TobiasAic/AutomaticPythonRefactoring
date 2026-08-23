@@ -3,9 +3,12 @@ from typing import Optional
 from llm.llm_types import LLMResponse
 from refactoring.refactoring import Refactoring
 from refactoring.refactoring_evaluation import RefactoringEvaluation
-from utility.cli import CLI
-from tree_of_thoughts.conventional_commits_specification import conventional_commits_specification
+from tree_of_thoughts.conventional_commits_specification import (
+    conventional_commits_specification,
+)
 from tree_of_thoughts.refactoring_evaluator import RefactoringEvaluator
+from utility.cli import CLI
+
 
 class IndividualRefactoringEvaluator(RefactoringEvaluator):
     prompt = """

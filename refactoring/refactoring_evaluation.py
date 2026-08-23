@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass
 class RefactoringEvaluation:
     """ Represents the evaluation given by the LLM for a refactoring operation. """

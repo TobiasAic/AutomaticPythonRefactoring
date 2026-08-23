@@ -1,5 +1,7 @@
 import os
+
 from dotenv import load_dotenv
+
 
 def get_env_variable(key: str) -> str:
     """Get a variable from the enviroment.

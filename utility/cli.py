@@ -1,5 +1,6 @@
 import inspect
 
+
 class CLI:
     in_debug_mode = False
     banner_width = 30
