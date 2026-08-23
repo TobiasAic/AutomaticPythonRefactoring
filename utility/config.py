@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from pathlib import Path
 
 import tomllib
 
@@ -11,7 +12,7 @@ class Config:
     This class holds all the necessary configuration parameters required for the tool to function properly.
     """
     root_path: str
-    target_file_paths: list[str] 
+    target_file_paths: list[str]
     git_repo_path: str
     branch_name: str
     pyenv_name: str
@@ -34,28 +35,31 @@ class Config:
             f"  show_tree={self.show_tree}\n"
             f")"
         )
-    
+
     def get_absolute_file_paths(self) -> list[str]:
         return [os.path.join(self.root_path, path) for path in self.target_file_paths]
-    
+
     def get_absolute_git_repo_path(self) -> str:
         return os.path.join(self.root_path, self.git_repo_path)
-    
+
     def get_absolute_test_file_path(self) -> str:
         return os.path.join(self.root_path, self.test_file_path)
 
     def get_absolute_statistics_directory(self) -> str:
         return os.path.join(self.root_path, self.statistics_directory)
 
+
 def load_from_toml(file_path: str) -> "Config":
     with open(file_path, "rb") as f:
         data = tomllib.load(f)
 
     if "root_path" not in data:
-        data["root_path"] = os.path.dirname(file_path)
-    
+        root_path = os.path.dirname(file_path)
+    else:
+        root_path = Path(data["root_path"]).expanduser()
+
     return Config(
-        root_path=data["root_path"],
+        root_path=root_path,
         target_file_paths=data["target_file_paths"],
         git_repo_path=data["git_repo_path"],
         branch_name=data["branch_name"],
