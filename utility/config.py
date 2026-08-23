@@ -5,7 +5,7 @@ import tomllib
 
 
 @dataclass
-class Config():
+class Config:
     """ 
     Configuration class for the Automatic Python Refactoring tool. 
     This class holds all the necessary configuration parameters required for the tool to function properly.
@@ -50,9 +50,12 @@ class Config():
 def load_from_toml(file_path: str) -> "Config":
     with open(file_path, "rb") as f:
         data = tomllib.load(f)
+
+    if "root_path" not in data:
+        data["root_path"] = os.path.dirname(file_path)
     
     return Config(
-        root_path=os.path.dirname(file_path),
+        root_path=data["root_path"],
         target_file_paths=data["target_file_paths"],
         git_repo_path=data["git_repo_path"],
         branch_name=data["branch_name"],
