@@ -21,10 +21,13 @@ from utility.cli import CLI
 
 class RefactoringGenerator:
     prompt = dedent("""
-    You are generating a refactoring candidate for a Python file to improve readability.
+    You are generating a refactoring candidate for a Python file or a part of it to improve readability.
 
-    This is the Python file to refactor:
+    This is the Python file or segment to refactor:
     {code_segment}
+    This segment could be part of a larger file, so you should not assume that it is the entire file.
+    It could be part of a larger class or function. 
+    Do not change the indentation.
 
     Find exactly one small refactoring from the category specified below.
 
@@ -184,7 +187,8 @@ class RefactoringGenerator:
         # have to look after the start_index to find the correct end_marker
         end_index = text.find(end_marker, start_index)
 
-        python_code = text[start_index:end_index].strip()
+        python_code = text[start_index:end_index]
+        python_code = python_code.removeprefix("\n")
 
         return python_code
 

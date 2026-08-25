@@ -4,12 +4,14 @@ from pathlib import Path
 from llm.llm_presets import qwen3_7_plus_config
 from llm.openai_llm import OpenAILLM
 from refactoring_system import RefactoringSystem
+from utility.balanced_code_divider import BalancedCodeDivider
 from utility.cli import CLI
 from utility.config import load_from_toml
 
 if __name__ == '__main__':
     CLI.set_debug_mode(True)
-    parser = argparse.ArgumentParser(description='Automatic Python Refactoring Tool')
+    parser = argparse.ArgumentParser(
+        description='Automatic Python Refactoring Tool')
     parser.add_argument('config_path', help='Path to config file')
     args = parser.parse_args()
 
@@ -19,7 +21,11 @@ if __name__ == '__main__':
     print("Running the refactoring system with the following parameters:")
     print(str(config))
 
-    llm = OpenAILLM(qwen3_7_plus_config)
+    llm = ParallelLLM(RetryingLLM(OpenAILLM(qwen3_7_plus_config), max_retries=3, delay_seconds=10.0))
+    refactoring_idea_count = 2  # Number of refactoring ideas to generate per segment
+    code_divider_class = BalancedCodeDivider  # Use the new code divider class
+    approximate_segment_length = 250  # Approximate length of each code segment
 
-    refactoring_system = RefactoringSystem(config, llm, 2)
+    refactoring_system = RefactoringSystem(
+        config, llm, refactoring_idea_count, code_divider_class, approximate_segment_length)
     refactoring_system.run()
