@@ -23,5 +23,6 @@ For this to work, you need to set the OPENCODE_API_KEY environment variable in y
 qwen3_7_plus_config = LLMConfig(
     api_key=get_env_variable("OPENCODE_GO_API_KEY"),
     base_url="https://opencode.ai/zen/go/v1/",
-    model_name="qwen3.7-plus"
+    model_name="qwen3.7-plus",
+    timeout=900
 )

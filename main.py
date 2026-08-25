@@ -3,6 +3,8 @@ from pathlib import Path
 
 from llm.llm_presets import qwen3_7_plus_config
 from llm.openai_llm import OpenAILLM
+from llm.parallel_llm import ParallelLLM
+from llm.retrying_llm import RetryingLLM
 from refactoring_system import RefactoringSystem
 from utility.balanced_code_divider import BalancedCodeDivider
 from utility.cli import CLI
