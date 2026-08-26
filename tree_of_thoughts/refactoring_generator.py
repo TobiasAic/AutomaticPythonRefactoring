@@ -8,7 +8,6 @@ from refactoring.apply_edits_refactoring import ApplyEditsTool
 from refactoring.extract_method_refactoring import ExtractMethodTool
 from refactoring.multi_rename_refactoring import MultiRenameTool
 from refactoring.refactoring import Refactoring
-from refactoring.rename_refactoring import RenameTool
 from tree_of_thoughts.refactoring_category import ALL_CATEGORIES, RefactoringCategory
 from utility.cli import CLI
 
