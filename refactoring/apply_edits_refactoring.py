@@ -81,10 +81,18 @@ class ApplyEditsTool(RefactoringTool):
             },
         }
 
+    # Some models ignore the schema and call this tool with other field names 
+    # These aliases make such calls still work
+    __OLD_CODE_ALIASES = ("old_code", "old_text", "old_str")
+    __NEW_CODE_ALIASES = ("new_code", "new_text", "new_str")
+
     def call(code_segment: str, arguments: dict) -> ApplyEditsRefactoring:
         """ Calls the Apply Edits refactoring with the given arguments from the LLM. """
         edits = [
-            EditArguments(old_code=edit.get("old_code"), new_code=edit.get("new_code"))
+            EditArguments(
+                old_code=ApplyEditsTool.__first_present(edit, ApplyEditsTool.__OLD_CODE_ALIASES),
+                new_code=ApplyEditsTool.__first_present(edit, ApplyEditsTool.__NEW_CODE_ALIASES),
+            )
             for edit in arguments.get("edits", [])
         ]
         try:
@@ -92,3 +100,10 @@ class ApplyEditsTool(RefactoringTool):
         except Exception as e:
             CLI.print_error(f"Failed to create ApplyEditsRefactoring with edits {edits}. Error: {e}")
             return None
+
+    @staticmethod
+    def __first_present(edit: dict, aliases: tuple[str, ...]) -> str | None:
+        for alias in aliases:
+            if alias in edit:
+                return edit[alias]
+        return None
