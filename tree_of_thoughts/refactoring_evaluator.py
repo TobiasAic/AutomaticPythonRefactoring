@@ -1,4 +1,5 @@
 import json
+from textwrap import detent
 
 from llm.llm_types import LLMResponse
 from llm.openai_llm import OpenAILLM
@@ -11,24 +12,43 @@ from utility.cli import CLI
 
 
 class RefactoringEvaluator:
-    prompt = """
-    Your job is to review a refactoring of a piece of Python code based on the code diff provided.
-    Your answer must be a JSON object with the following format:
-    {{
-        "commit_message": "A fitting commit message describing the refactoring",
-        "correct": true/false,
-        "grade": 1-5,
-    }}
+    prompt = detent("""
+    You are reviewing a Python refactoring.
+    You will receive a unified diff representing a refactoring of existing Python code.
 
-    The commit message should adhere to the Conventional Commits specification with a few additions as provided here:
-    {conventional_commits_specification}
+    Your tasks are:
+    1. Determine whether the refactoring preserves behavior.
+        - Compare the behavior implied by the diff before and after.
+        - If there is any functional change, return `"correct": false`.
+        - Otherwise return `"correct": true`.
 
-    The correct field should only be true if the refactoring does not alter the behavior of the code.
-    The grade should be an integer between 1 and 5, where 1 indicates a poor refactoring that does not improve code quality, and 5 indicates an excellent refactoring that significantly enhances code quality.
+    2. Evaluate the impact on code readability.
+        Assign an integer grade from -3 to 3.
 
-    Here is the diff of the refactoring to review:
-    {diff}
-    """
+        Meaning of the scale:
+        -3: Significantly worse
+        -2: Moderately worse
+        -1: Minor degradation
+        0: No meaningful change
+        1: Minor improvement
+        2: Moderate improvement
+        3: Significant improvement
+
+    3. Generate a commit message describing the refactoring.
+        Follow this specification:
+        {conventional_commits_specification}
+
+    Output **only** a valid JSON object with this exact schema:
+    {
+        "commit_message": "<string>",
+        "correct": <boolean>,
+        "grade": <integer from -3 to 3>
+    }
+    Do not include explanations, markdown, or additional fields.
+
+    Diff:
+    {diff}  
+    """)
 
     def __init__(self, llm: OpenAILLM):
         self.llm = llm
