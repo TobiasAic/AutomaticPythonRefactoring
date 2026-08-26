@@ -4,7 +4,6 @@ from pathlib import Path
 
 from llm.llm import LLM
 from refactoring.refactoring import Refactoring
-from refactoring.rope_refactoring import RopeRefactoring
 from tree_of_thoughts.individual_refactoring_evaluator import (
     IndividualRefactoringEvaluator,
 )
@@ -168,10 +167,7 @@ class RefactoringSystem:
             print(f"{i+1}. {self.refactoring_printable_string(refactoring)}")
 
     def refactoring_printable_string(self, refactoring: Refactoring) -> str:
-        if isinstance(refactoring, RopeRefactoring):
-            tool_name = refactoring.tool_name()
-        else:
-            tool_name = "no tool"
+        tool_name = refactoring.tool_name()
 
         if not refactoring.evaluation:
             return f"no evaluation, {tool_name}"

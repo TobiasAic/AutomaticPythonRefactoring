@@ -4,6 +4,7 @@ from textwrap import dedent
 
 from llm.llm import LLM
 from llm.llm_types import ToolCall
+from refactoring.apply_edits_refactoring import ApplyEditsTool
 from refactoring.extract_method_refactoring import ExtractMethodTool
 from refactoring.multi_rename_refactoring import MultiRenameTool
 from refactoring.refactoring import Refactoring
@@ -36,34 +37,37 @@ class RefactoringGenerator:
     {commit_history}
 
     Prefer a real readability improvement over a cosmetic change.
-
-    If there is no refactoring in that category that significantly improves readability, return "NO_REFACTORING".
-
-    If you find a refactoring, return the refactored code in exactly one Markdown Python code block containing the complete refactored file following these requirements.
-    Requirements:
-    1. Output exactly ONE ```python ... ``` code block.
-    2. The code block must contain the ENTIRE file from the first line to the last line.
-    3. Include all unchanged code; do not omit anything.
-    4. Do not include line numbers.
-    5. Do not output diffs, patches, snippets, excerpts, or partial code.
-    6. Do not output any other code block.
-    7. Do not output Python code outside the single code block.
-    8. Do not provide a second code block containing unchanged or partial code.
-    The single code block is the authoritative and complete version of the file. 
     """).strip()
 
     tool_instruction = dedent("""
-    Some refactorings can be done by calling a tool. 
-    If the refactoring can be done by a tool, you MUST use the tool.
-    Otherwise, return the refactored code in the Markdown Python code block.
+    You must express your answer only by calling one of the tools listed below - never as text.
+    There are specific tools for some refactorings.
+    If you can use a specific tool for the refactoring you want to perform, use it instead of the generic `apply_edits` tool.
+    If you can't find a specific tool for the refactoring you want to perform, use the `apply_edits` tool.
+    It lets you return only the changed code instead of the entire segment.
+    Each edit's old_code must match the segment exactly once, verbatim.
+    If you can't find a refactoring in this category that significantly improves readability, call the `no_refactoring` tool.
     """).strip()
+
+    no_refactoring_tool = {
+        "type": "function",
+        "function": {
+            "name": "no_refactoring",
+            "description": "Call this when there is no refactoring in this category that significantly improves readability.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": False,
+            },
+        },
+    }
 
     def __init__(self, llm: LLM, count: int = 1, categories: list[RefactoringCategory] | None = None):
         """
         Args:
             categories: The categories still available to this generator. Defaults to all
                 categories; pass a subset when resuming a segment whose categories were
-                already partially exhausted (i.e. the LLM returned NO_REFACTORING for them).
+                already partially exhausted (i.e. the LLM called the no_refactoring tool for them).
         """
         self.llm = llm
         self.categories = list(categories) if categories is not None else list(ALL_CATEGORIES)
@@ -80,9 +84,6 @@ class RefactoringGenerator:
             filepath (str): The path to the file containing the code segment.
             commit_history (list): A list of previous commits. (This is given to the LLM to prevent repeated refactorings.)
 
-        Raises:
-            ValueError: If an unexpected response type is received from the LLM.
-
         Returns:
             List[Refactoring]: A list of generated refactoring candidates.
         """
@@ -98,13 +99,15 @@ class RefactoringGenerator:
             CLI.print_debug(
                 f"Selected categories for this round: {', '.join([category.get_name() for category in round_categories])}")
 
-        tools = [category.get_tools() for category in round_categories]
+        tools = [
+            category.get_tools() + [ApplyEditsTool.get_description(), self.no_refactoring_tool]
+            for category in round_categories
+        ]
 
         prompts = []
         for category in round_categories:
             category_prompt = prompt
-            if len(category.get_tools()) > 0:
-                category_prompt += "\n" + self.tool_instruction
+            category_prompt += "\n" + self.tool_instruction
             category_prompt += "\n" + category.get_prompt()
             prompts.append(category_prompt)
 
@@ -112,36 +115,24 @@ class RefactoringGenerator:
 
         refactorings = []
         for i, response in enumerate(llm_responses):
-            if response.text is not None and response.text.strip().endswith("NO_REFACTORING"):
+            if response.tool_call is None:
+                CLI.print_error(
+                    f"Expected a tool call from the LLM but got none. Response content: {response}")
+                continue
+
+            if response.tool_call.name == "no_refactoring":
                 CLI.print_debug(
                     f"No meaningful refactoring found for {round_categories[i].get_name()}.")
                 # Remove the category from future consideration
                 self.categories.remove(round_categories[i])
-                refactoring = None
-            elif response.text is not None:
-                refactoring = self.__handle_string_response(
-                    response.text, code_segment)
-            elif response.tool_call is not None:
-                refactoring = self.__handle_tool_call_response(
-                    response.tool_call, code_segment)
-            else:
-                raise ValueError(
-                    f"Unexpected response type from LLM: {type(response)}. Response content: {response}")
+                continue
 
+            refactoring = self.__handle_tool_call_response(
+                response.tool_call, code_segment)
             if refactoring:
                 refactorings.append(refactoring)
 
         return refactorings
-
-    def __handle_string_response(self, response: str, code_segment: str) -> str | None:
-        """ Generate a Refactoring object from a string response from the LLM. """
-        try:
-            refactored_code = self.extract_python_code(response)
-        except ValueError as e:
-            CLI.print_debug(
-                f"Failed to extract Python code from LLM response: {e}")
-            return None
-        return Refactoring(code_segment, refactored_code)
 
     def __handle_tool_call_response(self, tool_call: ToolCall, code_segment: str) -> Refactoring | None:
         """ Generate a Refactoring object from a tool call response from the LLM. """
@@ -155,6 +146,8 @@ class RefactoringGenerator:
                 return ExtractMethodTool.call(code_segment=code_segment, arguments=arguments)
             if tool_call.name == "multi_rename":
                 return MultiRenameTool.call(code_segment=code_segment, arguments=arguments)
+            if tool_call.name == "apply_edits":
+                return ApplyEditsTool.call(code_segment=code_segment, arguments=arguments)
             else:
                 CLI.print_error(
                     f"Received tool call for unknown tool '{tool_call.name}'. Response content: {tool_call}")
@@ -163,26 +156,6 @@ class RefactoringGenerator:
             CLI.print_error(
                 f"An error occurred while handling the tool call: {e}")
             return None
-
-    # Needs to be public for unit tests
-    def extract_python_code(self, text: str) -> str:
-        """ Extract Python code from a string that contains a code block wrapped in markdown markers. """
-        start_marker = "```python"
-        end_marker = "```"
-
-        # there need to be 2 end markers in the text because the start_marker also contains the end_marker
-        if text.count(start_marker) != 1 or text.count(end_marker) != 2:
-            raise ValueError(
-                f"Input text contains {text.count(start_marker)} start markers and {text.count(end_marker)} end markers. Expected exactly 1 start marker and 2 end markers.")
-
-        start_index = text.find(start_marker) + len(start_marker)
-        # have to look after the start_index to find the correct end_marker
-        end_index = text.find(end_marker, start_index)
-
-        python_code = text[start_index:end_index]
-        python_code = python_code.removeprefix("\n")
-
-        return python_code
 
     def __add_line_numbers(self, code: str) -> str:
         lines = code.split("\n")

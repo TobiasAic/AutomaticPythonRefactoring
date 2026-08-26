@@ -25,6 +25,10 @@ class Refactoring:
         )
         return '\n'.join(diff)
 
+    def tool_name(self) -> str:
+        """ The name of the tool that produced this refactoring, or "no tool" for the free-text path. """
+        return "no tool"
+
     def set_evaluation(self, evaluation: RefactoringEvaluation) -> None:
         """ Set the evaluation for the refactoring. """
         self.evaluation = evaluation
