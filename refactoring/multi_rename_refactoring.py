@@ -13,30 +13,41 @@ from utility.cli import CLI
 @dataclass
 class RenameArguments:
     """ Arguments from the LLM for the Rename and MultiRename refactoring. """
-    line_number: int
+    context_code: str
     old_name: str
     new_name: str
 
-def calculate_offset(filepath: str, line_number: int, identifier: str) -> int:
-    """ Calculates the offset of an identifier in a file.
+def calculate_offset(filepath: str, context_code: str, identifier: str) -> int:
+    """ Calculates the offset of an identifier within a unique snippet of code in a file.
 
     Args:
         filepath (str): The path to the file containing the code.
-        line_number (int): The line number of the identifier to rename.
+        context_code (str): A snippet of code, unique in the file, containing exactly one
+            occurrence of identifier.
         identifier (str): The identifier to rename.
 
     Returns:
         int: The offset of the identifier in the file.
+
+    Raises:
+        ValueError: If context_code does not appear in the file exactly once, or identifier
+            does not appear in context_code exactly once.
     """
     with open(filepath, "r") as f:
-        lines = f.readlines()
+        content = f.read()
 
-    offset = 0
-    for i in range(line_number - 1):
-        offset += len(lines[i])
+    context_occurrences = content.count(context_code)
+    if context_occurrences != 1:
+        raise ValueError(
+            f"context_code must match exactly once in the code segment, found {context_occurrences} occurrences: {context_code!r}")
 
-    offset += lines[line_number - 1].index(identifier)
-    return offset
+    identifier_occurrences = context_code.count(identifier)
+    if identifier_occurrences != 1:
+        raise ValueError(
+            f"old_name must match exactly once within context_code, found {identifier_occurrences} occurrences: {identifier!r}")
+
+    context_offset = content.index(context_code)
+    return context_offset + context_code.index(identifier)
 
 
 class MultiRenameRefactoring(RopeRefactoring[list[RenameArguments]]):
@@ -52,7 +63,7 @@ class MultiRenameRefactoring(RopeRefactoring[list[RenameArguments]]):
             resource = libutils.path_to_resource(project, filepath)
 
             try:
-                offset = calculate_offset(filepath, argument.line_number, argument.old_name)
+                offset = calculate_offset(filepath, argument.context_code, argument.old_name)
             except ValueError as e:
                 CLI.print_error(f"Failed to calculate offset for argument {argument}. Error: {e}")
                 continue
@@ -73,7 +84,7 @@ class MultiRenameTool(RefactoringTool):
                 "type": "function",
                 "function": {
                     "name": "multi_rename",
-                    "description": "Rename multiple local variables or attributes, especially when several weak names appear in the same nearby block, function, or scope. Use one entry per identifier: for each change, provide one line number where the identifier appears, the exact old name, and the new name. Do not add separate entries for every occurrence in the same scope. For example, if the code is number: 1: def build_path():\nnumber: 2:     base_dir = \"/tmp\"\nnumber: 3:     return base_dir, then call the tool with changes containing line_number 2, old_name base_dir, and new_name renamed_base_dir.\n Only use this tool for renaming. You are not allowed to use it for adding types or doing any other refactorings.",
+                    "description": "Rename multiple local variables or attributes, especially when several weak names appear in the same nearby block, function, or scope. Use one entry per identifier: for each change, provide a short snippet of code containing exactly one occurrence of the identifier (context_code), the exact old name, and the new name. Do not add separate entries for every occurrence in the same scope. For example, if the code is:\ndef build_path():\n    base_dir = \"/tmp\"\n    return base_dir\nthen call the tool with changes containing context_code 'base_dir = \"/tmp\"', old_name 'base_dir', and new_name 'renamed_base_dir'.\n Only use this tool for renaming. You are not allowed to use it for adding types or doing any other refactorings.",
                     "parameters": {
                     "type": "object",
                     "properties": {
@@ -83,9 +94,9 @@ class MultiRenameTool(RefactoringTool):
                         "items": {
                             "type": "object",
                             "properties": {
-                            "line_number": {
-                                "type": "integer",
-                                "description": "Line number of one occurrence used to locate the scope."
+                            "context_code": {
+                                "type": "string",
+                                "description": "A short snippet of code, verbatim, that appears exactly once in the code segment and contains exactly one occurrence of old_name. Used to locate which occurrence to rename."
                             },
                             "old_name": {
                                 "type": "string",
@@ -96,7 +107,7 @@ class MultiRenameTool(RefactoringTool):
                                 "description": "New identifier name."
                             }
                             },
-                            "required": ["line_number", "old_name", "new_name"],
+                            "required": ["context_code", "old_name", "new_name"],
                             "additionalProperties": False
                         }
                         }
@@ -112,10 +123,10 @@ class MultiRenameTool(RefactoringTool):
         changes = arguments.get("changes", [])
         rename_arguments = []
         for change in changes:
-            line_number = int(change.get("line_number"))
+            context_code = change.get("context_code")
             old_name = change.get("old_name")
             new_name = change.get("new_name")
-            rename_arguments.append(RenameArguments(line_number=line_number, old_name=old_name, new_name=new_name))
+            rename_arguments.append(RenameArguments(context_code=context_code, old_name=old_name, new_name=new_name))
         try:
             return MultiRenameRefactoring(code_segment, rename_arguments)
         except Exception as e:
