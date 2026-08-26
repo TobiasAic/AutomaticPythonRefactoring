@@ -209,5 +209,8 @@ class ReadabilityAnalyzer:
 
     def __plot_metric(self, filepath: str, metric: str, axis: plt.Axes):
         values = [getattr(readability_metrics, metric) for readability_metrics in self.metrics[filepath]]
+        if 0 in values:
+            print(f"Warning: Metric '{metric}' has zero values, skipping percentage change plot.")
+            return
         percentage_changes = [(values[i] - values[i-1]) / values[i-1] * 100 for i in range(1, len(values))]
         axis.plot(range(1, len(values)), percentage_changes, marker='o', label=metric)
