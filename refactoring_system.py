@@ -55,6 +55,7 @@ class RefactoringSystem:
 
         filepaths = self.config.get_absolute_file_paths()
         for file_index in range(self.checkpoint.file_index, len(filepaths)):
+            self.file_index = file_index
             if file_index != self.checkpoint.file_index:
                 self.checkpoint = Checkpoint(file_index=file_index)
             filepath = filepaths[file_index]
@@ -78,7 +79,8 @@ class RefactoringSystem:
             self.readability_analyzer.save(self.metrics_path)
 
         code = self.__read_file(filepath)
-        code_divider = self.code_divider_class(code, self.approximate_segment_length)
+        code_divider = self.code_divider_class(
+            code, self.approximate_segment_length)
         code_divider.print_segment_lengths()
 
         self.refactoring_generators = [
@@ -88,6 +90,7 @@ class RefactoringSystem:
         ]
 
         for iteration in range(self.checkpoint.iteration, self.config.max_iterations):
+            self.iteration = iteration
             iteration_start = time.time()
             CLI.print_banner(
                 f"Iteration {iteration + 1}")
@@ -139,26 +142,69 @@ class RefactoringSystem:
 
         self.refactoring_evaluator.batch_evaluate(refactoring_suggestions)
 
+        for refactoring in refactoring_suggestions:
+            original_code = self.__read_file(filepath)
+            self.apply_refactoring(
+                refactoring, filepath, code_segment.id, code_divider, remember=False)
+            refactoring.set_compiles(Compiler.try_compile_file(filepath))
+            refactoring.set_tests_changed(self.tester.test_changed())
+            refactoring.set_metrics(
+                ReadabilityAnalyzer.analyze_file(filepath))
+            # revert refactoring to original code
+            self.__write_file(filepath, original_code)
+
         sorted_refactorings = self.sort_refactorings_by_evaluation(
             refactoring_suggestions)
         self.print_refactorings(sorted_refactorings)
         final_candidates = self.filter_refactorings(sorted_refactorings)
 
-        self.apply_best_refactoring(
-            filepath, code_segment.id, final_candidates, code_divider)
+        if self.config.show_tree:
+           self.apply_all_refactorings(sorted_refactorings, filepath, code_segment.id, code_divider) 
+        else:
+            self.apply_best_refactoring(
+                final_candidates[0], filepath, code_segment.id, code_divider)
+        
 
-        self.readability_analyzer.record_metrics(filepath)
-        self.readability_analyzer.save(self.metrics_path)
+        # self.apply_best_refactoring(
+        #     filepath, code_segment.id, final_candidates, code_divider)
+
+        # self.readability_analyzer.record_metrics(filepath)
+        # self.readability_analyzer.save(self.metrics_path)
+
+    def apply_best_refactoring(self, best_refactoring: Refactoring, filepath: str, code_segment_id: int, code_divider: CodeDivider):
+        self.apply_refactoring(
+            best_refactoring, filepath, code_segment_id, code_divider, remember=True)
+        self.git_repository.commit_changes(best_refactoring.get_commit_message())
+
+    def apply_all_refactorings(self, sorted_refactorings: list[Refactoring], filepath: str, code_segment_id: int, code_divider: CodeDivider):
+        if len(sorted_refactorings) == 0:
+            return
+
+        found_best_refactoring = False
+
+        for refactoring in sorted_refactorings:
+            self.git_repository.create_branch(f"{self.file_index}_{self.iteration}_{code_segment_id}_{refactoring.category.get_name()}")
+            self.apply_refactoring(
+                refactoring, filepath, code_segment_id, code_divider, remember=True)
+            self.git_repository.commit_changes(refactoring.get_commit_message())
+            if not found_best_refactoring and self.is_valid_refactoring(refactoring):
+                found_best_refactoring = True
+                self.git_repository.move_branch(self.config.branch_name)
+            self.git_repository.go_to_previous_commit()
+        self.git_repository.checkout_branch(self.config.branch_name)
 
     def sort_refactorings_by_evaluation(self, refactorings: list) -> list:
-        return sorted(refactorings, key=lambda r: r.evaluation.sorting_value() if r.evaluation else 0, reverse=True)
+        return sorted(refactorings, key=lambda r: r.evaluation.sorting_value() if r.evaluation else -4, reverse=True)
 
     def filter_refactorings(self, refactorings: list) -> list:
         filtered_refactorings = []
         for refactoring in refactorings:
-            if refactoring.evaluation and refactoring.evaluation.correct:
+            if self.is_valid_refactoring(refactoring):
                 filtered_refactorings.append(refactoring)
         return filtered_refactorings
+
+    def is_valid_refactoring(self, refactoring: Refactoring) -> bool:
+        return refactoring.evaluation and refactoring.evaluation.correct and refactoring.evaluation.grade > 0 and refactoring.compiles and not refactoring.tests_changed
 
     def print_refactorings(self, sorted_refactorings):
         for i, refactoring in enumerate(sorted_refactorings):
@@ -176,38 +222,10 @@ class RefactoringSystem:
             correct_string = "Correct" if refactoring.evaluation.correct else "Incorrect"
             return f"{correct_string}, {refactoring.evaluation.grade}, {short_description}, {tool_name}"
 
-    def apply_best_refactoring(self, filepath, segment_id: int, sorted_refactorings: list, code_divider: CodeDivider):
-        for refactoring in sorted_refactorings:
-            if self.validate_refactoring(refactoring, segment_id, filepath, code_divider):
-                self.apply_refactoring(
-                    refactoring, filepath, segment_id, code_divider, remember=True)
-                self.git_repository.commit_changes(
-                    refactoring.evaluation.description)
-                break
-
     def apply_refactoring(self, refactoring: Refactoring, filepath, segment_id: int, code_divider: CodeDivider, remember: bool = True):
-        refactored_file = code_divider.replace_segment(CodeSegment(id=segment_id, code=refactoring.new_code), remember=remember)
+        refactored_file = code_divider.replace_segment(CodeSegment(
+            id=segment_id, code=refactoring.new_code), remember=remember)
         self.__write_file(filepath, refactored_file)
-
-    def validate_refactoring(self, refactoring: Refactoring, segment_id: int, filepath: str, code_divider: CodeDivider) -> bool:
-        original_code = self.__read_file(filepath)
-        self.apply_refactoring(refactoring, filepath,
-                               segment_id, code_divider, remember=False)
-
-        if not Compiler.try_compile_file(filepath):
-            input("Press Enter to continue after fixing compilation errors...")
-            # Restore the original code
-            self.__write_file(filepath, original_code)
-            CLI.print_debug(
-                f"Refactoring '{refactoring.evaluation.description}' failed compilation.")
-            return False
-
-        tests_changed = self.tester.test_changed()
-        if tests_changed:
-            CLI.print_debug(
-                f"Refactoring '{refactoring.evaluation.description}' failed tests.")
-        self.__write_file(filepath, original_code)  # Restore the original code
-        return not tests_changed
 
     def format_timespan(self, seconds: float) -> str:
         return str(timedelta(seconds=seconds))

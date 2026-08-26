@@ -1,7 +1,14 @@
+from __future__ import annotations
+import json
+
 import difflib
+from typing import TYPE_CHECKING
 
 from refactoring.refactoring_evaluation import RefactoringEvaluation
-from tree_of_thoughts.refactoring_category import RefactoringCategory
+from utility.readability_analyzer import ReadabilityMetrics
+
+if TYPE_CHECKING:
+    from tree_of_thoughts.refactoring_category import RefactoringCategory
 
 
 class Refactoring:
@@ -11,6 +18,9 @@ class Refactoring:
         self.new_code = new_code
         self.evaluation = None
         self.category: RefactoringCategory = None
+        self.compiles: bool = None
+        self.tests_changed: bool = None
+        self.metrics: ReadabilityMetrics = None
 
     def get_diff(self) -> str:
         """Returns a unified diff between the old and new code.
@@ -27,6 +37,20 @@ class Refactoring:
         )
         return '\n'.join(diff)
 
+    def get_commit_message(self) -> str:
+        """Returns the commit message from the evaluation, if available.
+
+        Returns:
+            str: The commit message, or None if no evaluation is set.
+        """
+        description = self.evaluation.description if self.evaluation else "Missing evaluation"
+        category = self.category.get_name() if self.category else "Missing category"
+        compiles = self.compiles if self.compiles is not None else "Missing compilation status"
+        tests_changed = self.tests_changed if self.tests_changed is not None else "Missing test change status"
+        metrics = self.metrics.to_dict() if self.metrics else "Missing metrics"
+
+        return f"{description}\n\nCategory: {category}\nCompiles: {compiles}\nTests Changed: {tests_changed}\nMetrics:\n{json.dumps(metrics, indent=2)}"
+
     def tool_name(self) -> str:
         """ The name of the tool that produced this refactoring, or "no tool" for the free-text path. """
         return "no tool"
@@ -39,16 +63,33 @@ class Refactoring:
         """ Set the category for the refactoring. """
         self.category = category
 
+    def set_compiles(self, compiles: bool) -> None:
+        """ Set whether the refactored code compiles. """
+        self.compiles = compiles
+
+    def set_tests_changed(self, tests_changed: bool) -> None:
+        """ Set whether the refactored code changes the behavior of any tests. """
+        self.tests_changed = tests_changed
+
+    def set_metrics(self, metrics: ReadabilityMetrics) -> None:
+        """ Set the readability metrics for the refactored code. """
+        self.metrics = metrics
+
     def to_dict(self) -> dict:
         return {
             "old_code": self.old_code,
             "new_code": self.new_code,
             "category": self.category.value if self.category else None,
             "evaluation": self.evaluation.to_dict() if self.evaluation else None,
+            "compiles": self.compiles,
+            "tests_changed": self.tests_changed,
+            "metrics": self.metrics.to_dict() if self.metrics else None
         }
     
     @classmethod
     def from_dict(cls, data: dict) -> 'Refactoring':
+        from tree_of_thoughts.refactoring_category import RefactoringCategory
+
         refactoring = cls(
             old_code=data["old_code"],
             new_code=data["new_code"]
@@ -57,5 +98,11 @@ class Refactoring:
             refactoring.category = RefactoringCategory(data["category"])
         if data.get("evaluation"):
             refactoring.evaluation = RefactoringEvaluation.from_dict(data["evaluation"])
+        if data.get("compiles") is not None:
+            refactoring.compiles = data["compiles"]
+        if data.get("tests_changed") is not None:
+            refactoring.tests_changed = data["tests_changed"]
+        if data.get("metrics"):
+            refactoring.metrics = ReadabilityMetrics.from_dict(data["metrics"])
         return refactoring
     

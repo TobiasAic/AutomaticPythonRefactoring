@@ -139,7 +139,7 @@ class RefactoringGenerator:
         """ Generate a Refactoring object from a tool call response from the LLM. """
         arguments = json.loads(tool_call.arguments)
         CLI.print_debug(
-            f"Received tool call for '{tool_call.name}' with arguments: {arguments}")
+            f"Received tool call for '{tool_call.name}'")
         try:
             if tool_call.name == "rename":
                 return RenameTool.call(code_segment=code_segment, arguments=arguments)

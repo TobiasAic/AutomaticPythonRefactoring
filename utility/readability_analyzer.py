@@ -74,6 +74,9 @@ class ReadabilityMetrics:
                 improvements.append(f"{field}: {old_value} -> {new_value}")
         return "\n".join(improvements)
 
+    def to_dict(self) -> dict:
+        return asdict(self)
+
 class ReadabilityAnalyzer:
     def __init__(self):
         self.metrics = dict()

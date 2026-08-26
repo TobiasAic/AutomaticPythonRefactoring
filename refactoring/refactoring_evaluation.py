@@ -16,7 +16,7 @@ class RefactoringEvaluation:
     def sorting_value(self) -> int:
         """ Sort incorrect evaluations to the end of the list, and correct evaluations by their grade. """
         if not self.correct:
-            return -1
+            return -4
         return self.grade
     
     def to_dict(self) -> dict:

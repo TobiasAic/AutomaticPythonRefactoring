@@ -1,5 +1,5 @@
 import json
-from textwrap import detent
+from textwrap import dedent
 
 from llm.llm_types import LLMResponse
 from llm.openai_llm import OpenAILLM
@@ -12,7 +12,7 @@ from utility.cli import CLI
 
 
 class RefactoringEvaluator:
-    prompt = detent("""
+    prompt = dedent("""
     You are reviewing a Python refactoring.
     You will receive a unified diff representing a refactoring of existing Python code.
 
@@ -39,11 +39,11 @@ class RefactoringEvaluator:
         {conventional_commits_specification}
 
     Output **only** a valid JSON object with this exact schema:
-    {
+    {{
         "commit_message": "<string>",
         "correct": <boolean>,
         "grade": <integer from -3 to 3>
-    }
+    }}
     Do not include explanations, markdown, or additional fields.
 
     Diff:
@@ -84,12 +84,9 @@ class RefactoringEvaluator:
         """
         prompts = []
         for refactoring in refactorings:
-            metric_improvements = self.get_metrics(refactoring)
-
             prompt = RefactoringEvaluator.prompt.format(
                 diff=refactoring.get_diff(),
                 conventional_commits_specification=conventional_commits_specification,
-                metric_improvements=metric_improvements
             )
             prompts.append(prompt)
 
