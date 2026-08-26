@@ -8,7 +8,6 @@ from tree_of_thoughts.conventional_commits_specification import (
     conventional_commits_specification,
 )
 from utility.cli import CLI
-from utility.readability_analyzer import ReadabilityAnalyzer
 
 
 class RefactoringEvaluator:
@@ -27,9 +26,6 @@ class RefactoringEvaluator:
     The correct field should only be true if the refactoring does not alter the behavior of the code.
     The grade should be an integer between 1 and 5, where 1 indicates a poor refactoring that does not improve code quality, and 5 indicates an excellent refactoring that significantly enhances code quality.
 
-    Here are how some metrics changed due to the refactoring:
-    {metric_improvements}
-
     Here is the diff of the refactoring to review:
     {diff}
     """
@@ -46,12 +42,9 @@ class RefactoringEvaluator:
         Returns:
             RefactoringEvaluation | None: The evaluation of the refactoring.
         """
-        metric_improvements = self.get_metrics(refactoring)
-
         prompt = RefactoringEvaluator.prompt.format(
             diff=refactoring.get_diff(),
             conventional_commits_specification=conventional_commits_specification,
-            metric_improvements=metric_improvements
         )
         response = self.llm.generate(prompt)
 
@@ -89,24 +82,7 @@ class RefactoringEvaluator:
             except ValueError as e:
                 CLI.print_error(f"LLM did not return a valid evaluation: {response}")
 
-    def get_metrics(self, refactoring: Refactoring) -> str:
-        """Generate a string describing the improvement of code metrics by the refactoring.
-
-        Args:
-            refactoring (Refactoring): The refactoring to analyze.
-
-        Returns:
-            str: The string describing the improvement of code metrics by the refactoring.
-        """
-        try:
-            metrics_before = ReadabilityAnalyzer.analyze_code(refactoring.old_code)
-            metrics_after = ReadabilityAnalyzer.analyze_code(refactoring.new_code)
-            metric_improvements = metrics_before.get_string_improvements(metrics_after)
-        except Exception as e:
-            metric_improvements = f"Failed to analyze metrics. There might be an issue with the code. Error: {e}"
-        return metric_improvements
-
-    def extract_json(self, llm_response: LLMResponse) -> dict:
+    def __extract_json(self, llm_response: LLMResponse) -> dict:
         """Extract the JSON object from the LLM response.
 
         Args:
@@ -148,7 +124,7 @@ class RefactoringEvaluator:
         Returns:
             RefactoringEvaluation | None: The extracted evaluation or None if the evaluation extraction fails.
         """
-        data = self.extract_json(llm_response)
+        data = self.__extract_json(llm_response)
 
         if not all(key in data for key in ["commit_message", "correct", "grade"]):
             raise ValueError(
