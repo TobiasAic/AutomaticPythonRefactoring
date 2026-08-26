@@ -150,3 +150,14 @@ CODE_QUALITY = RefactoringCategory(
         AddExplanatoryComment,
     ],
 )
+
+ALL_CATEGORIES = [
+    CONDITIONAL_LOGIC,
+    CONTROL_FLOW,
+    EXPRESSION,
+    METHOD_STRUCTURE,
+    CLASS_STRUCTURE,
+    CODE_QUALITY,
+]
+
+CATEGORIES_BY_NAME = {category.get_name(): category for category in ALL_CATEGORIES}

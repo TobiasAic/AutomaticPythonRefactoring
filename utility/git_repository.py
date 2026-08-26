@@ -47,6 +47,17 @@ class GitRepository:
         except Exception as e:
             raise Exception(f"Failed to create and switch to branch '{branch_name}': {str(e)}")
 
+    def branch_exists(self, branch_name: str) -> bool:
+        """Check whether a branch with the given name already exists.
+
+        Args:
+            branch_name (str): The name of the branch to look for.
+
+        Returns:
+            bool: True if the branch exists.
+        """
+        return branch_name in [head.name for head in self.repo.heads]
+
     def commit_changes(self, message: str) -> str:
         """Commit all changes with a specified message.
 

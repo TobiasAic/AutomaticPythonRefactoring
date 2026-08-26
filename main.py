@@ -26,7 +26,7 @@ if __name__ == '__main__':
     llm = ParallelLLM(RetryingLLM(OpenAILLM(qwen3_7_plus_config), max_retries=3, delay_seconds=10.0))
     refactoring_idea_count = 2  # Number of refactoring ideas to generate per segment
     code_divider_class = BalancedCodeDivider  # Use the new code divider class
-    approximate_segment_length = 250  # Approximate length of each code segment
+    approximate_segment_length = 500  # Approximate length of each code segment
 
     refactoring_system = RefactoringSystem(
         config, llm, refactoring_idea_count, code_divider_class, approximate_segment_length)

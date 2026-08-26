@@ -8,14 +8,7 @@ from refactoring.extract_method_refactoring import ExtractMethodTool
 from refactoring.multi_rename_refactoring import MultiRenameTool
 from refactoring.refactoring import Refactoring
 from refactoring.rename_refactoring import RenameTool
-from tree_of_thoughts.refactoring_category import (
-    CLASS_STRUCTURE,
-    CODE_QUALITY,
-    CONDITIONAL_LOGIC,
-    CONTROL_FLOW,
-    EXPRESSION,
-    METHOD_STRUCTURE,
-)
+from tree_of_thoughts.refactoring_category import ALL_CATEGORIES, RefactoringCategory
 from utility.cli import CLI
 
 
@@ -65,19 +58,18 @@ class RefactoringGenerator:
     Otherwise, return the refactored code in the Markdown Python code block.
     """).strip()
 
-    def __init__(self, llm: LLM, count: int = 1):
+    def __init__(self, llm: LLM, count: int = 1, categories: list[RefactoringCategory] | None = None):
+        """
+        Args:
+            categories: The categories still available to this generator. Defaults to all
+                categories; pass a subset when resuming a segment whose categories were
+                already partially exhausted (i.e. the LLM returned NO_REFACTORING for them).
+        """
         self.llm = llm
-        self.categories = [
-            CONDITIONAL_LOGIC,
-            CONTROL_FLOW,
-            EXPRESSION,
-            METHOD_STRUCTURE,
-            CLASS_STRUCTURE,
-            CODE_QUALITY,
-        ]
-        if count > len(self.categories) and count > 0:
+        self.categories = list(categories) if categories is not None else list(ALL_CATEGORIES)
+        if count > len(ALL_CATEGORIES) and count > 0:
             raise ValueError(
-                f"Count {count} exceeds the number of available categories {len(self.categories)} or is not positive.")
+                f"Count {count} exceeds the number of available categories {len(ALL_CATEGORIES)} or is not positive.")
         self.count = count
 
     def generate_refactorings(self, code_segment: str, commit_history: list) -> list[Refactoring]:

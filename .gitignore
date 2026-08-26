@@ -45,3 +45,8 @@ refactoring_collection_deepseek_v4_pro/
 refactoring_collection_qwen3_7_plus/
 refactoring_collection_qwen_test/
 refactoring_collection_test/
+output/
+test-data.xml
+result_images/test_agg/agg_filter-expected.png
+result_images/test_agg/agg_filter.png
+run_benchmark.sh

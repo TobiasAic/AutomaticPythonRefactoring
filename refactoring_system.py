@@ -8,7 +8,9 @@ from refactoring.rope_refactoring import RopeRefactoring
 from tree_of_thoughts.individual_refactoring_evaluator import (
     IndividualRefactoringEvaluator,
 )
+from tree_of_thoughts.refactoring_category import CATEGORIES_BY_NAME
 from tree_of_thoughts.refactoring_generator import RefactoringGenerator
+from utility.checkpoint import Checkpoint
 from utility.cli import CLI
 from utility.code_divider import CodeDivider, CodeSegment
 from utility.compiler import Compiler
@@ -33,17 +35,38 @@ class RefactoringSystem:
         self.tester = PytestTester(
             pyenv_name=config.pyenv_name, test_file_path=config.get_absolute_test_file_path())
 
+        statistics_directory = config.get_absolute_statistics_directory()
+        self.checkpoint_path = statistics_directory + "/checkpoint.json"
+        self.metrics_path = statistics_directory + "/readability_metrics.json"
+
     def run(self):
         start = time.time()
-        self.git_repository.create_branch(self.config.branch_name)
 
-        for filepath in self.config.get_absolute_file_paths():
+        self.checkpoint = Checkpoint.load_if_exists(self.checkpoint_path)
+        if self.checkpoint is not None:
+            self.readability_analyzer.load(self.metrics_path)
+            self.git_repository.checkout_branch(self.config.branch_name)
+            CLI.print_debug(
+                f"Resuming from checkpoint: file {self.checkpoint.file_index + 1}, "
+                f"iteration {self.checkpoint.iteration + 1}, segment {self.checkpoint.segment_index + 1}")
+        else:
+            self.checkpoint = Checkpoint()
+            if self.git_repository.branch_exists(self.config.branch_name):
+                self.git_repository.checkout_branch(self.config.branch_name)
+            else:
+                self.git_repository.create_branch(self.config.branch_name)
+
+        filepaths = self.config.get_absolute_file_paths()
+        for file_index in range(self.checkpoint.file_index, len(filepaths)):
+            if file_index != self.checkpoint.file_index:
+                self.checkpoint = Checkpoint(file_index=file_index)
+            filepath = filepaths[file_index]
             self.refactor_file(filepath)
             self.readability_analyzer.plot_percentage_change(
                 filepath, output_path=self.config.get_absolute_statistics_directory() + f"/{Path(filepath).stem}_readability_plot.png")
 
-        self.readability_analyzer.save(
-            self.config.get_absolute_statistics_directory() + "/readability_metrics.json")
+        self.readability_analyzer.save(self.metrics_path)
+        Checkpoint.clear(self.checkpoint_path)
         print(
             f"Finished refactoring in {self.format_timespan(time.time() - start)}")
 
@@ -52,33 +75,58 @@ class RefactoringSystem:
             f"Starting refactoring for {Path(filepath).name}", symbol="=", empty_line_count=2)
         # Run tests before starting the refactoring process to establish a baseline
         print(f"Test results before refactoring: {self.tester.test_before()}")
-        self.readability_analyzer.record_metrics(filepath)
+
+        if filepath not in self.readability_analyzer.metrics:
+            self.readability_analyzer.record_metrics(filepath)
+            self.readability_analyzer.save(self.metrics_path)
 
         code = self.__read_file(filepath)
         code_divider = self.code_divider_class(code, self.approximate_segment_length)
         code_divider.print_segment_lengths()
 
-        self.refactoring_generators = [RefactoringGenerator(
-            self.llm, self.count) for _ in range(code_divider.get_number_of_segments())]
+        self.refactoring_generators = [
+            RefactoringGenerator(
+                self.llm, self.count, categories=self.__resumed_categories(segment.id))
+            for segment in code_divider.get_segments()
+        ]
 
-        for iteration in range(self.config.max_iterations):
+        for iteration in range(self.checkpoint.iteration, self.config.max_iterations):
             iteration_start = time.time()
             CLI.print_banner(
                 f"Iteration {iteration + 1}")
             self.do_iteration(filepath, code_divider)
+            self.checkpoint.iteration = iteration + 1
+            self.checkpoint.segment_index = 0
+            self.__save_checkpoint()
             print(
                 f"Iteration {iteration + 1} completed in {self.format_timespan(time.time() - iteration_start)}")
+
+    def __resumed_categories(self, segment_id: int):
+        category_names = self.checkpoint.categories_by_segment.get(segment_id)
+        if category_names is None:
+            return None
+        return [CATEGORIES_BY_NAME[name] for name in category_names]
 
     def do_iteration(self, filepath: str, code_divider: CodeDivider):
         self.print_available_categories()
 
-        for segment in code_divider.get_segments():
+        for segment in code_divider.get_segments()[self.checkpoint.segment_index:]:
             if len(self.refactoring_generators[segment.id].categories) > 0:
                 self.refactor_segment(
                     segment, filepath, code_divider, self.refactoring_generators[segment.id])
             else:
                 CLI.print_debug(
                     f"No more categories available for segment {segment.id+1}. Skipping refactoring for this segment.")
+
+            self.checkpoint.segment_index = segment.id + 1
+            self.checkpoint.categories_by_segment = {
+                i: [category.get_name() for category in generator.categories]
+                for i, generator in enumerate(self.refactoring_generators)
+            }
+            self.__save_checkpoint()
+
+    def __save_checkpoint(self):
+        self.checkpoint.save(self.checkpoint_path)
 
     def refactor_segment(self, code_segment: CodeSegment, filepath: str, code_divider: CodeDivider, refactoring_generator: RefactoringGenerator):
         CLI.print_banner(
@@ -103,6 +151,7 @@ class RefactoringSystem:
             filepath, code_segment.id, final_candidates, code_divider)
 
         self.readability_analyzer.record_metrics(filepath)
+        self.readability_analyzer.save(self.metrics_path)
 
     def sort_refactorings_by_evaluation(self, refactorings: list) -> list:
         return sorted(refactorings, key=lambda r: r.evaluation.sorting_value() if r.evaluation else 0, reverse=True)
