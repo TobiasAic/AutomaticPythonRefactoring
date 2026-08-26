@@ -1,4 +1,5 @@
 """ This file contains the implementation of the Multi Rename refactoring and a corresponding tool for an LLM to call. """
+import re
 from dataclasses import dataclass
 
 from rope.base import libutils
@@ -41,13 +42,14 @@ def calculate_offset(filepath: str, context_code: str, identifier: str) -> int:
         raise ValueError(
             f"context_code must match exactly once in the code segment, found {context_occurrences} occurrences: {context_code!r}")
 
-    identifier_occurrences = context_code.count(identifier)
-    if identifier_occurrences != 1:
+    identifier_pattern = re.compile(rf"\b{re.escape(identifier)}\b")
+    identifier_matches = list(identifier_pattern.finditer(context_code))
+    if len(identifier_matches) != 1:
         raise ValueError(
-            f"old_name must match exactly once within context_code, found {identifier_occurrences} occurrences: {identifier!r}")
+            f"old_name must match exactly once as a whole identifier within context_code, found {len(identifier_matches)} occurrences: {identifier!r}")
 
     context_offset = content.index(context_code)
-    return context_offset + context_code.index(identifier)
+    return context_offset + identifier_matches[0].start()
 
 
 class MultiRenameRefactoring(RopeRefactoring[list[RenameArguments]]):
