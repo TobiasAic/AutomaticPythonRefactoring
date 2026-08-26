@@ -14,8 +14,7 @@ from utility.cli import CLI
 @dataclass
 class ExtractMethodArguments:
     """ Arguments from the LLM for the Extract Method refactoring. """
-    start_line: int
-    end_line: int
+    code_to_extract: str
     new_name: str
 
 class ExtractMethodRefactoring(RopeRefactoring):
@@ -23,13 +22,15 @@ class ExtractMethodRefactoring(RopeRefactoring):
         """Execute the extract method refactoring using Rope.
 
         Args:
-            project (Project): The Rope project instance. 
+            project (Project): The Rope project instance.
             filepath (str): The path to the file containing the code to refactor.
             refactoring_arguments (ExtractMethodArguments): The arguments for the extract method refactoring.
+
+        Raises:
+            ValueError: If code_to_extract does not appear in the file exactly once.
         """
         resource = libutils.path_to_resource(project, filepath)
-        start_offset = self.__calculate_offset_for_line(filepath, refactoring_arguments.start_line)
-        end_offset = self.__calculate_offset_for_line(filepath, refactoring_arguments.end_line, include_line=True)
+        start_offset, end_offset = self.__calculate_offsets(filepath, refactoring_arguments.code_to_extract)
         extract_method = ExtractMethod(project, resource, start_offset=start_offset, end_offset=end_offset)
         changes = extract_method.get_changes(refactoring_arguments.new_name)
         project.do(changes)
@@ -37,12 +38,16 @@ class ExtractMethodRefactoring(RopeRefactoring):
     def tool_name(self) -> str:
         return "Extract Method"
 
-    def __calculate_offset_for_line(self, filepath: str, line_number: int, include_line: bool = False) -> int:
+    def __calculate_offsets(self, filepath: str, code_to_extract: str) -> tuple[int, int]:
         with open(filepath, "r") as file:
-            lines = file.readlines()
-        last_included_line = line_number if include_line else line_number - 1
-        offset = sum(len(line) for line in lines[:last_included_line])
-        return offset
+            content = file.read()
+        occurrences = content.count(code_to_extract)
+        if occurrences != 1:
+            raise ValueError(
+                f"code_to_extract must match exactly once in the code segment, found {occurrences} occurrences: {code_to_extract!r}")
+        start_offset = content.index(code_to_extract)
+        end_offset = start_offset + len(code_to_extract)
+        return start_offset, end_offset
 
 class ExtractMethodTool(RefactoringTool):
     @staticmethod
@@ -56,20 +61,16 @@ class ExtractMethodTool(RefactoringTool):
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "start_line": {
-                        "type": "integer",
-                        "description": "The number of the first line of the code block to extract."
-                    },
-                    "end_line": {
-                        "type": "integer",
-                        "description": "The number of the last line of the code block to extract."
+                    "code_to_extract": {
+                        "type": "string",
+                        "description": "The exact code to extract into a new method, verbatim, including whitespace and indentation. Must appear exactly once in the code segment."
                     },
                     "new_name": {
                         "type": "string",
                         "description": "The name of the new method."
                     }
                 },
-                "required": ["start_line", "end_line", "new_name"],
+                "required": ["code_to_extract", "new_name"],
                 "additionalProperties": False,
             },
         },
@@ -77,12 +78,11 @@ class ExtractMethodTool(RefactoringTool):
 
     def call(code_segment: str, arguments: dict) -> ExtractMethodRefactoring:
         """ Calls the Extract Method refactoring with the given arguments from the LLM. """
-        start_line = int(arguments.get("start_line"))
-        end_line = int(arguments.get("end_line"))
+        code_to_extract = arguments.get("code_to_extract")
         new_name = arguments.get("new_name")
         try:
-            return ExtractMethodRefactoring(code_segment, ExtractMethodArguments(start_line=start_line, end_line=end_line, new_name=new_name))
+            return ExtractMethodRefactoring(code_segment, ExtractMethodArguments(code_to_extract=code_to_extract, new_name=new_name))
         except Exception as e:
-            CLI.print_error(f"Failed to create ExtractMethodRefactoring for code_segment from line {start_line} to line {end_line} with new method name '{new_name}'. Error: {e}")
+            CLI.print_error(f"Failed to create ExtractMethodRefactoring for code_to_extract {code_to_extract!r} with new method name '{new_name}'. Error: {e}")
             return None
 
