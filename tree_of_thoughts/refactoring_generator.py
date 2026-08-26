@@ -36,9 +36,7 @@ class RefactoringGenerator:
     {commit_history}
 
     Prefer a real readability improvement over a cosmetic change.
-    """).strip()
 
-    tool_instruction = dedent("""
     You must express your answer only by calling one of the tools listed below - never as text.
     There are specific tools for some refactorings.
     If you can use a specific tool for the refactoring you want to perform, use it instead of the generic `apply_edits` tool.
@@ -87,7 +85,7 @@ class RefactoringGenerator:
             List[Refactoring]: A list of generated refactoring candidates.
         """
         prompt = self.prompt.format(
-            code_segment=self.__add_line_numbers(code_segment),
+            code_segment=code_segment,
             commit_history=commit_history
         )
 
@@ -105,10 +103,7 @@ class RefactoringGenerator:
 
         prompts = []
         for category in round_categories:
-            category_prompt = prompt
-            category_prompt += "\n" + self.tool_instruction
-            category_prompt += "\n" + category.get_prompt()
-            prompts.append(category_prompt)
+            prompts.append(f"{prompt}\n\n{category.get_prompt()}")
 
         llm_responses = self.llm.batch_generate(prompts, tools)
 
@@ -140,8 +135,6 @@ class RefactoringGenerator:
         CLI.print_debug(
             f"Received tool call for '{tool_call.name}'")
         try:
-            if tool_call.name == "rename":
-                return RenameTool.call(code_segment=code_segment, arguments=arguments)
             if tool_call.name == "extract_method":
                 return ExtractMethodTool.call(code_segment=code_segment, arguments=arguments)
             if tool_call.name == "multi_rename":
@@ -156,8 +149,3 @@ class RefactoringGenerator:
             CLI.print_error(
                 f"An error occurred while handling the tool call: {e}")
             return None
-
-    def __add_line_numbers(self, code: str) -> str:
-        lines = code.split("\n")
-        numbered_lines = [f"{i+1}: {line}" for i, line in enumerate(lines)]
-        return "\n".join(numbered_lines)
