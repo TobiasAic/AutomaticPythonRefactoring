@@ -1,6 +1,10 @@
 import pytest
 
-from refactoring.apply_edits_refactoring import ApplyEditsRefactoring, EditArguments
+from refactoring.apply_edits_refactoring import (
+    ApplyEditsRefactoring,
+    ApplyEditsTool,
+    EditArguments,
+)
 
 
 def test_apply_edits_refactoring():
@@ -38,3 +42,39 @@ def test_apply_edits_refactoring_rejects_missing_old_code():
 
     with pytest.raises(ValueError):
         ApplyEditsRefactoring(original_code, edits)
+
+
+def test_get_description_declares_the_apply_edits_function():
+    description = ApplyEditsTool.get_description()
+
+    assert description["function"]["name"] == "apply_edits"
+
+
+def test_call_builds_refactoring_from_standard_field_names():
+    arguments = {"edits": [{"old_code": "x = 1", "new_code": "x = 2"}]}
+
+    refactoring = ApplyEditsTool.call("x = 1\n", arguments)
+
+    assert refactoring.new_code == "x = 2\n"
+
+
+def test_call_resolves_alternate_field_name_aliases():
+    arguments = {"edits": [{"old_text": "x = 1", "new_str": "x = 2"}]}
+
+    refactoring = ApplyEditsTool.call("x = 1\n", arguments)
+
+    assert refactoring.new_code == "x = 2\n"
+
+
+def test_call_returns_none_when_edit_does_not_match():
+    arguments = {"edits": [{"old_code": "does_not_exist", "new_code": "x = 2"}]}
+
+    refactoring = ApplyEditsTool.call("x = 1\n", arguments)
+
+    assert refactoring is None
+
+
+def test_call_defaults_to_empty_edits_list_when_missing():
+    refactoring = ApplyEditsTool.call("x = 1\n", {})
+
+    assert refactoring.new_code == "x = 1\n"

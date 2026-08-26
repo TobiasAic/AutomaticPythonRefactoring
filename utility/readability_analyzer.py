@@ -77,6 +77,10 @@ class ReadabilityMetrics:
     def to_dict(self) -> dict:
         return asdict(self)
 
+    @staticmethod
+    def from_dict(data: dict) -> 'ReadabilityMetrics':
+        return ReadabilityMetrics(**data)
+
 class ReadabilityAnalyzer:
     def __init__(self):
         self.metrics = dict()

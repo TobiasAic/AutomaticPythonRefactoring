@@ -81,7 +81,7 @@ class Refactoring:
         return {
             "old_code": self.old_code,
             "new_code": self.new_code,
-            "category": self.category.value if self.category else None,
+            "category": self.category.get_name() if self.category else None,
             "evaluation": self.evaluation.to_dict() if self.evaluation else None,
             "compiles": self.compiles,
             "tests_changed": self.tests_changed,
@@ -90,14 +90,14 @@ class Refactoring:
     
     @classmethod
     def from_dict(cls, data: dict) -> 'Refactoring':
-        from tree_of_thoughts.refactoring_category import RefactoringCategory
+        from tree_of_thoughts.refactoring_category import CATEGORIES_BY_NAME
 
         refactoring = cls(
             old_code=data["old_code"],
             new_code=data["new_code"]
         )
         if data.get("category"):
-            refactoring.category = RefactoringCategory(data["category"])
+            refactoring.category = CATEGORIES_BY_NAME[data["category"]]
         if data.get("evaluation"):
             refactoring.evaluation = RefactoringEvaluation.from_dict(data["evaluation"])
         if data.get("compiles") is not None:

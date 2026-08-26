@@ -8,6 +8,7 @@ import pytest
 from llm.llm_types import LLMResponse
 from llm.logging_llm import LoggingLLM
 from llm.parallel_llm import ParallelLLM
+from llm.retrying_llm import RetryingLLM
 
 
 class FakeLLM:
@@ -104,3 +105,44 @@ def test_parallel_llm_limits_batch_size():
 
     with pytest.raises(ValueError, match="Batch generation is limited to 10 prompts at a time"):
         parallel_llm.batch_generate(prompts)
+
+
+class FlakyLLM:
+    def __init__(self, failures_before_success: int):
+        self.model_name = "flaky-model"
+        self.failures_before_success = failures_before_success
+        self.attempts = 0
+
+    def generate(self, prompt: str, tools=None):
+        self.attempts += 1
+        if self.attempts <= self.failures_before_success:
+            raise RuntimeError(f"attempt {self.attempts} failed")
+        return LLMResponse(text=prompt.upper())
+
+
+def test_retrying_llm_returns_result_once_it_succeeds(monkeypatch):
+    monkeypatch.setattr("llm.retrying_llm.time.sleep", lambda seconds: None)
+    flaky_llm = FlakyLLM(failures_before_success=2)
+    retrying_llm = RetryingLLM(flaky_llm, max_retries=3, delay_seconds=0)
+
+    response = retrying_llm.generate("prompt")
+
+    assert response == LLMResponse(text="PROMPT")
+    assert flaky_llm.attempts == 3
+
+
+def test_retrying_llm_raises_last_exception_after_exhausting_retries(monkeypatch):
+    monkeypatch.setattr("llm.retrying_llm.time.sleep", lambda seconds: None)
+    flaky_llm = FlakyLLM(failures_before_success=5)
+    retrying_llm = RetryingLLM(flaky_llm, max_retries=3, delay_seconds=0)
+
+    with pytest.raises(RuntimeError, match="attempt 3 failed"):
+        retrying_llm.generate("prompt")
+
+    assert flaky_llm.attempts == 3
+
+
+def test_retrying_llm_delegates_unknown_attributes():
+    retrying_llm = RetryingLLM(FakeLLM())
+
+    assert retrying_llm.model_name == "fake-model"
