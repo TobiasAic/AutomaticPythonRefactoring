@@ -33,7 +33,7 @@ class RefactoringSystem:
             pyenv_name=config.pyenv_name, test_file_path=config.get_absolute_test_file_path())
 
         statistics_directory = config.get_absolute_statistics_directory()
-        self.state_path = statistics_directory + "/checkpoint.json"
+        self.state_path = statistics_directory + "/refactoring_state.json"
         self.metrics_path = statistics_directory + "/readability_metrics.json"
 
     def run(self):
