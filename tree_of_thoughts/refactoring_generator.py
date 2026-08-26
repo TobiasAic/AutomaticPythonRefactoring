@@ -130,6 +130,7 @@ class RefactoringGenerator:
             refactoring = self.__handle_tool_call_response(
                 response.tool_call, code_segment)
             if refactoring:
+                refactoring.category = round_categories[i]
                 refactorings.append(refactoring)
 
         return refactorings
