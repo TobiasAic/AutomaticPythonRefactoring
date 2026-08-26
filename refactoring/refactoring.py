@@ -44,12 +44,14 @@ class Refactoring:
             str: The commit message, or None if no evaluation is set.
         """
         description = self.evaluation.description if self.evaluation else "Missing evaluation"
+        grade = self.evaluation.grade if self.evaluation else "Missing grade"
+        correct = self.evaluation.correct if self.evaluation else "Missing correctness"
         category = self.category.get_name() if self.category else "Missing category"
         compiles = self.compiles if self.compiles is not None else "Missing compilation status"
         tests_changed = self.tests_changed if self.tests_changed is not None else "Missing test change status"
         metrics = self.metrics.to_dict() if self.metrics else "Missing metrics"
 
-        return f"{description}\n\nCategory: {category}\nCompiles: {compiles}\nTests Changed: {tests_changed}\nMetrics:\n{json.dumps(metrics, indent=2)}"
+        return f"{description}\n\nCategory: {category}\nGrade: {grade}\nCorrect: {correct}\nCompiles: {compiles}\nTests Changed: {tests_changed}\nMetrics:\n{json.dumps(metrics, indent=2)}"
 
     def tool_name(self) -> str:
         """ The name of the tool that produced this refactoring, or "no tool" for the free-text path. """
