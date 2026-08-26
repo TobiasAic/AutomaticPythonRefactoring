@@ -7,7 +7,6 @@ from refactoring.refactoring import Refactoring
 from tree_of_thoughts.refactoring_category import CATEGORIES_BY_NAME
 from tree_of_thoughts.refactoring_evaluator import RefactoringEvaluator
 from tree_of_thoughts.refactoring_generator import RefactoringGenerator
-from utility.checkpoint import Checkpoint
 from utility.cli import CLI
 from utility.code_divider import CodeDivider, CodeSegment
 from utility.compiler import Compiler
@@ -15,6 +14,7 @@ from utility.config import Config
 from utility.git_repository import GitRepository
 from utility.pytest_tester import PytestTester
 from utility.readability_analyzer import ReadabilityAnalyzer
+from utility.refactoring_system_state import RefactoringSystemState
 
 
 class RefactoringSystem:
@@ -35,11 +35,12 @@ class RefactoringSystem:
         statistics_directory = config.get_absolute_statistics_directory()
         self.checkpoint_path = statistics_directory + "/checkpoint.json"
         self.metrics_path = statistics_directory + "/readability_metrics.json"
+        self.state = RefactoringSystemState()
 
     def run(self):
         start = time.time()
 
-        self.checkpoint = Checkpoint.load_if_exists(self.checkpoint_path)
+        self.checkpoint = RefactoringSystemState.load_if_exists(self.checkpoint_path)
         if self.checkpoint is not None:
             self.readability_analyzer.load(self.metrics_path)
             self.git_repository.checkout_branch(self.config.branch_name)
@@ -47,7 +48,7 @@ class RefactoringSystem:
                 f"Resuming from checkpoint: file {self.checkpoint.file_index + 1}, "
                 f"iteration {self.checkpoint.iteration + 1}, segment {self.checkpoint.segment_index + 1}")
         else:
-            self.checkpoint = Checkpoint()
+            self.checkpoint = RefactoringSystemState()
             if self.git_repository.branch_exists(self.config.branch_name):
                 self.git_repository.checkout_branch(self.config.branch_name)
             else:
@@ -57,14 +58,14 @@ class RefactoringSystem:
         for file_index in range(self.checkpoint.file_index, len(filepaths)):
             self.file_index = file_index
             if file_index != self.checkpoint.file_index:
-                self.checkpoint = Checkpoint(file_index=file_index)
+                self.checkpoint = RefactoringSystemState(file_index=file_index)
             filepath = filepaths[file_index]
             self.refactor_file(filepath)
             self.readability_analyzer.plot_percentage_change(
                 filepath, output_path=self.config.get_absolute_statistics_directory() + f"/{Path(filepath).stem}_readability_plot.png")
 
         self.readability_analyzer.save(self.metrics_path)
-        Checkpoint.clear(self.checkpoint_path)
+        RefactoringSystemState.clear(self.checkpoint_path)
         print(
             f"Finished refactoring in {self.format_timespan(time.time() - start)}")
 
@@ -173,18 +174,23 @@ class RefactoringSystem:
         if len(sorted_refactorings) == 0:
             return
 
-        found_best_refactoring = False
+        best_refactoring = None
 
         for refactoring in sorted_refactorings:
             self.git_repository.create_branch(f"{self.file_index}_{self.iteration}_{code_segment_id}_{refactoring.category.get_name()}")
             self.apply_refactoring(
                 refactoring, filepath, code_segment_id, code_divider, remember=False)
             self.git_repository.commit_changes(refactoring.get_commit_message())
-            if not found_best_refactoring and self.is_valid_refactoring(refactoring):
-                found_best_refactoring = True
+            if best_refactoring is None and self.is_valid_refactoring(refactoring):
+                best_refactoring = refactoring
                 self.git_repository.move_branch(self.config.branch_name)
             self.git_repository.go_to_previous_commit()
         self.git_repository.checkout_branch(self.config.branch_name)
+
+        # Update the code segment with the best refactoring if it exists 
+        if best_refactoring is not None:
+            code_divider.replace_segment(
+                CodeSegment(id=code_segment_id, code=best_refactoring.new_code), remember=True)
 
     def sort_refactorings_by_evaluation(self, refactorings: list) -> list:
         return sorted(refactorings, key=lambda r: r.evaluation.sorting_value() if r.evaluation else -4, reverse=True)
