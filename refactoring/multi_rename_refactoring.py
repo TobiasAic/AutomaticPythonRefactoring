@@ -1,12 +1,42 @@
 """ This file contains the implementation of the Multi Rename refactoring and a corresponding tool for an LLM to call. """
+from dataclasses import dataclass
+
 from rope.base import libutils
 from rope.base.project import Project
 from rope.refactor.rename import Rename
 
 from refactoring.refactoring_tool import RefactoringTool
-from refactoring.rename_shared import RenameArguments, calculate_offset
 from refactoring.rope_refactoring import RopeRefactoring
 from utility.cli import CLI
+
+
+@dataclass
+class RenameArguments:
+    """ Arguments from the LLM for the Rename and MultiRename refactoring. """
+    line_number: int
+    old_name: str
+    new_name: str
+
+def calculate_offset(filepath: str, line_number: int, identifier: str) -> int:
+    """ Calculates the offset of an identifier in a file.
+
+    Args:
+        filepath (str): The path to the file containing the code.
+        line_number (int): The line number of the identifier to rename.
+        identifier (str): The identifier to rename.
+
+    Returns:
+        int: The offset of the identifier in the file.
+    """
+    with open(filepath, "r") as f:
+        lines = f.readlines()
+
+    offset = 0
+    for i in range(line_number - 1):
+        offset += len(lines[i])
+
+    offset += lines[line_number - 1].index(identifier)
+    return offset
 
 
 class MultiRenameRefactoring(RopeRefactoring[list[RenameArguments]]):
