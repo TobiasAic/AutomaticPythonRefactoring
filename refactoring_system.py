@@ -163,13 +163,6 @@ class RefactoringSystem:
         else:
             self.apply_best_refactoring(
                 final_candidates[0], filepath, code_segment.id, code_divider)
-        
-
-        # self.apply_best_refactoring(
-        #     filepath, code_segment.id, final_candidates, code_divider)
-
-        # self.readability_analyzer.record_metrics(filepath)
-        # self.readability_analyzer.save(self.metrics_path)
 
     def apply_best_refactoring(self, best_refactoring: Refactoring, filepath: str, code_segment_id: int, code_divider: CodeDivider):
         self.apply_refactoring(
@@ -185,7 +178,7 @@ class RefactoringSystem:
         for refactoring in sorted_refactorings:
             self.git_repository.create_branch(f"{self.file_index}_{self.iteration}_{code_segment_id}_{refactoring.category.get_name()}")
             self.apply_refactoring(
-                refactoring, filepath, code_segment_id, code_divider, remember=True)
+                refactoring, filepath, code_segment_id, code_divider, remember=False)
             self.git_repository.commit_changes(refactoring.get_commit_message())
             if not found_best_refactoring and self.is_valid_refactoring(refactoring):
                 found_best_refactoring = True
