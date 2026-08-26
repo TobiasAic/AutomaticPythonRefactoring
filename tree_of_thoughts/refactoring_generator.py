@@ -59,27 +59,22 @@ class RefactoringGenerator:
         },
     }
 
-    def __init__(self, llm: LLM, count: int = 1, categories: list[RefactoringCategory] | None = None):
-        """
-        Args:
-            categories: The categories still available to this generator. Defaults to all
-                categories; pass a subset when resuming a segment whose categories were
-                already partially exhausted (i.e. the LLM called the no_refactoring tool for them).
-        """
+    def __init__(self, llm: LLM, count: int = 1):
         self.llm = llm
-        self.categories = list(categories) if categories is not None else list(ALL_CATEGORIES)
         if count > len(ALL_CATEGORIES) and count > 0:
             raise ValueError(
                 f"Count {count} exceeds the number of available categories {len(ALL_CATEGORIES)} or is not positive.")
         self.count = count
 
-    def generate_refactorings(self, code_segment: str, commit_history: list) -> list[Refactoring]:
+    def generate_refactorings(self, code_segment: str, commit_history: list, categories: list[RefactoringCategory]) -> list[Refactoring]:
         """Generate refactorings from different categories for a given code segment using the LLM.
 
         Args:
-            code_segment (str): The code segment to be refactored. 
+            code_segment (str): The code segment to be refactored.
             filepath (str): The path to the file containing the code segment.
             commit_history (list): A list of previous commits. (This is given to the LLM to prevent repeated refactorings.)
+            categories (list[RefactoringCategory]): The categories still available for this segment. Categories
+                for which the LLM finds no meaningful refactoring are removed from this list in place.
 
         Returns:
             List[Refactoring]: A list of generated refactoring candidates.
@@ -90,9 +85,9 @@ class RefactoringGenerator:
         )
 
         round_categories = random.sample(
-            self.categories, min(self.count, len(self.categories)))
+            categories, min(self.count, len(categories)))
 
-        if len(round_categories) != len(self.categories):
+        if len(round_categories) != len(categories):
             CLI.print_debug(
                 f"Selected categories for this round: {', '.join([category.get_name() for category in round_categories])}")
 
@@ -118,7 +113,7 @@ class RefactoringGenerator:
                 CLI.print_debug(
                     f"No meaningful refactoring found for {round_categories[i].get_name()}.")
                 # Remove the category from future consideration
-                self.categories.remove(round_categories[i])
+                categories.remove(round_categories[i])
                 continue
 
             refactoring = self.__handle_tool_call_response(

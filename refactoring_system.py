@@ -4,7 +4,7 @@ from pathlib import Path
 
 from llm.llm import LLM
 from refactoring.refactoring import Refactoring
-from tree_of_thoughts.refactoring_category import CATEGORIES_BY_NAME
+from tree_of_thoughts.refactoring_category import RefactoringCategory
 from tree_of_thoughts.refactoring_evaluator import RefactoringEvaluator
 from tree_of_thoughts.refactoring_generator import RefactoringGenerator
 from utility.cli import CLI
@@ -33,39 +33,38 @@ class RefactoringSystem:
             pyenv_name=config.pyenv_name, test_file_path=config.get_absolute_test_file_path())
 
         statistics_directory = config.get_absolute_statistics_directory()
-        self.checkpoint_path = statistics_directory + "/checkpoint.json"
+        self.state_path = statistics_directory + "/checkpoint.json"
         self.metrics_path = statistics_directory + "/readability_metrics.json"
-        self.state = RefactoringSystemState()
 
     def run(self):
         start = time.time()
 
-        self.checkpoint = RefactoringSystemState.load_if_exists(self.checkpoint_path)
-        if self.checkpoint is not None:
+        self.state = RefactoringSystemState.load_if_exists(self.state_path)
+        if self.state is not None:
             self.readability_analyzer.load(self.metrics_path)
             self.git_repository.checkout_branch(self.config.branch_name)
             CLI.print_debug(
-                f"Resuming from checkpoint: file {self.checkpoint.file_index + 1}, "
-                f"iteration {self.checkpoint.iteration + 1}, segment {self.checkpoint.segment_index + 1}")
+                f"Resuming from checkpoint: file {self.state.file_index + 1}, "
+                f"iteration {self.state.iteration + 1}, segment {self.state.segment_index + 1}")
         else:
-            self.checkpoint = RefactoringSystemState()
+            self.state = RefactoringSystemState().bind(self.state_path)
             if self.git_repository.branch_exists(self.config.branch_name):
                 self.git_repository.checkout_branch(self.config.branch_name)
             else:
                 self.git_repository.create_branch(self.config.branch_name)
 
         filepaths = self.config.get_absolute_file_paths()
-        for file_index in range(self.checkpoint.file_index, len(filepaths)):
+        for file_index in range(self.state.file_index, len(filepaths)):
             self.file_index = file_index
-            if file_index != self.checkpoint.file_index:
-                self.checkpoint = RefactoringSystemState(file_index=file_index)
+            if file_index != self.state.file_index:
+                self.state = RefactoringSystemState(file_index=file_index).bind(self.state_path)
             filepath = filepaths[file_index]
             self.refactor_file(filepath)
             self.readability_analyzer.plot_percentage_change(
                 filepath, output_path=self.config.get_absolute_statistics_directory() + f"/{Path(filepath).stem}_readability_plot.png")
 
         self.readability_analyzer.save(self.metrics_path)
-        RefactoringSystemState.clear(self.checkpoint_path)
+        RefactoringSystemState.clear(self.state_path)
         print(
             f"Finished refactoring in {self.format_timespan(time.time() - start)}")
 
@@ -85,56 +84,41 @@ class RefactoringSystem:
         code_divider.print_segment_lengths()
 
         self.refactoring_generators = [
-            RefactoringGenerator(
-                self.llm, self.count, categories=self.__resumed_categories(segment.id))
+            RefactoringGenerator(self.llm, self.count)
             for segment in code_divider.get_segments()
         ]
 
-        for iteration in range(self.checkpoint.iteration, self.config.max_iterations):
+        for iteration in range(self.state.iteration, self.config.max_iterations):
             self.iteration = iteration
             iteration_start = time.time()
             CLI.print_banner(
                 f"Iteration {iteration + 1}")
             self.do_iteration(filepath, code_divider)
-            self.checkpoint.iteration = iteration + 1
-            self.checkpoint.segment_index = 0
-            self.__save_checkpoint()
+            self.state.iteration = iteration + 1
+            self.state.segment_index = 0
             print(
                 f"Iteration {iteration + 1} completed in {self.format_timespan(time.time() - iteration_start)}")
 
-    def __resumed_categories(self, segment_id: int):
-        category_names = self.checkpoint.categories_by_segment.get(segment_id)
-        if category_names is None:
-            return None
-        return [CATEGORIES_BY_NAME[name] for name in category_names]
-
     def do_iteration(self, filepath: str, code_divider: CodeDivider):
-        self.print_available_categories()
+        self.print_available_categories(code_divider)
 
-        for segment in code_divider.get_segments()[self.checkpoint.segment_index:]:
-            if len(self.refactoring_generators[segment.id].categories) > 0:
+        for segment in code_divider.get_segments()[self.state.segment_index:]:
+            categories = self.state.categories_for_segment(segment.id)
+            if len(categories) > 0:
                 self.refactor_segment(
-                    segment, filepath, code_divider, self.refactoring_generators[segment.id])
+                    segment, filepath, code_divider, self.refactoring_generators[segment.id], categories)
             else:
                 CLI.print_debug(
                     f"No more categories available for segment {segment.id+1}. Skipping refactoring for this segment.")
 
-            self.checkpoint.segment_index = segment.id + 1
-            self.checkpoint.categories_by_segment = {
-                i: [category.get_name() for category in generator.categories]
-                for i, generator in enumerate(self.refactoring_generators)
-            }
-            self.__save_checkpoint()
+            self.state.segment_index = segment.id + 1
 
-    def __save_checkpoint(self):
-        self.checkpoint.save(self.checkpoint_path)
-
-    def refactor_segment(self, code_segment: CodeSegment, filepath: str, code_divider: CodeDivider, refactoring_generator: RefactoringGenerator):
+    def refactor_segment(self, code_segment: CodeSegment, filepath: str, code_divider: CodeDivider, refactoring_generator: RefactoringGenerator, categories: list[RefactoringCategory]):
         CLI.print_banner(
             f"Segment {code_segment.id + 1} - Current MI: {self.readability_analyzer.metrics[filepath][-1].maintainability_index}", symbol="-")
         commit_history = self.git_repository.get_commit_history()
         refactoring_suggestions = refactoring_generator.generate_refactorings(
-            code_segment.code, commit_history=commit_history)
+            code_segment.code, commit_history=commit_history, categories=categories)
 
         if refactoring_suggestions == []:
             CLI.print_debug(
@@ -237,7 +221,8 @@ class RefactoringSystem:
         with open(filepath, "w") as f:
             f.write(content)
 
-    def print_available_categories(self):
-        for i, refactoring_generator in enumerate(self.refactoring_generators):
+    def print_available_categories(self, code_divider: CodeDivider):
+        for segment in code_divider.get_segments():
+            categories = self.state.categories_for_segment(segment.id)
             print(
-                f"Segment {i+1}: {', '.join([category.get_name() for category in refactoring_generator.categories])}")
+                f"Segment {segment.id+1}: {', '.join([category.get_name() for category in categories])}")
