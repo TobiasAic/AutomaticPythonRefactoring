@@ -4,10 +4,8 @@ from pathlib import Path
 
 from llm.llm import LLM
 from refactoring.refactoring import Refactoring
-from tree_of_thoughts.individual_refactoring_evaluator import (
-    IndividualRefactoringEvaluator,
-)
 from tree_of_thoughts.refactoring_category import CATEGORIES_BY_NAME
+from tree_of_thoughts.refactoring_evaluator import RefactoringEvaluator
 from tree_of_thoughts.refactoring_generator import RefactoringGenerator
 from utility.checkpoint import Checkpoint
 from utility.cli import CLI
@@ -29,7 +27,7 @@ class RefactoringSystem:
 
         self.git_repository = GitRepository(
             config.get_absolute_git_repo_path())
-        self.refactoring_evaluator = IndividualRefactoringEvaluator(llm)
+        self.refactoring_evaluator = RefactoringEvaluator(llm)
         self.readability_analyzer = ReadabilityAnalyzer()
         self.tester = PytestTester(
             pyenv_name=config.pyenv_name, test_file_path=config.get_absolute_test_file_path())
