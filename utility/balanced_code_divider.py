@@ -5,6 +5,14 @@ from utility.code_segmentation import CodeBlock, CodeSegmentation
 
 
 class BalancedCodeDivider(CodeDivider):
+    """Splits source into segments of roughly `approximate_lines` lines each.
+
+    Segment boundaries only ever land on class/function/top-level-statement
+    boundaries, and only classes are ever broken open to make a boundary -
+    a function body or a run of plain statements is always kept as one
+    atomic piece, even if it ends up bigger than the target size.
+    """
+
     def __init__(self, approximate_lines: int = 500):
         self.approximate_lines = approximate_lines
         self.labeler = CodeLabeler()
@@ -37,10 +45,12 @@ class BalancedCodeDivider(CodeDivider):
 
         num_segments is how many pieces the file would end up in at roughly
         approximate_lines each; max_lines is the resulting even share, used as
-        a hard ceiling (e.g. so no single block ever gets subdivided smaller
-        than it needs to be). merge_blocks uses num_segments to keep rebalancing
-        toward an even split as it goes, rather than just packing greedily up
-        to max_lines and leaving whatever's left as a small final segment.
+        a soft cap that split_in_segments tries to keep every segment under
+        (classes are broken open to help stay under it; atomic function and
+        statement blocks may still exceed it). merge_blocks uses num_segments
+        to keep rebalancing toward an even split as it goes, rather than just
+        packing greedily up to max_lines and leaving whatever's left as a
+        small final segment.
         """
         num_segments = max(1, round(total_lines / approximate_lines))
         # ceil(total_lines / num_segments)
@@ -51,12 +61,10 @@ class BalancedCodeDivider(CodeDivider):
         blocks = self.split_in_blocks(labels)
 
         for block in blocks.get_blocks():
-            if block.length() > max_lines:
-                self.subdivide_block(labels, blocks, block, max_lines)
+            if block.length() > max_lines and self._is_class(labels, block, depth=0):
+                self._subdivide_class(labels, blocks, block, max_lines, depth=0)
 
-        segments = self.merge_blocks(blocks, max_lines, num_segments)
-
-        return segments
+        return self.merge_blocks(blocks, max_lines, num_segments)
 
     def split_in_blocks(self, labels: list[tuple[str]]) -> CodeSegmentation:
         """Splits labeled source lines into atomic top-level blocks.
@@ -105,47 +113,42 @@ class BalancedCodeDivider(CodeDivider):
             if keys[i] != keys[i - 1]:
                 segmentation.split_at(start + i)
 
-    def subdivide_block(self, labels: list[tuple[str]], blocks: CodeSegmentation, block: CodeBlock, max_lines: int, depth: int = 1):
-        """Recursively splits an oversized block until every piece fits in max_lines.
+    def _is_class(self, labels: list[tuple[str]], block: CodeBlock, depth: int) -> bool:
+        """Whether `block`'s content is a class, based on its label key at `depth`.
 
-        First tries to divide between the block's direct subfunctions/subclasses
-        (one nesting level deeper than however this block itself was found).
-        If that finds no boundaries - i.e. the block is just statements with no
-        nested defs - it falls back to splitting on empty lines, and if there
-        are none of those either, to a hard cut every max_lines lines.
+        Looks at the first non-blank line in the block, since every non-blank
+        line in a block shares the same key at that depth by construction.
         """
-        if block.length() <= max_lines:
-            return
+        for line in range(block.start_line, block.end_line + 1):
+            if labels[line] != "e":
+                key = self.labeler.key_at_depth(labels[line], depth)
+                return isinstance(key, str) and key.startswith("c(")
+        return False
 
+    def _subdivide_class(self, labels: list[tuple[str]], blocks: CodeSegmentation, block: CodeBlock, max_lines: int, depth: int):
+        """Splits an oversized class into its direct members.
+
+        Divides between the class's direct nested classes/functions, one
+        nesting level deeper than however this block itself was found. A
+        member that's a function, or a run of statements directly in the
+        class body, is left as-is even if it's still bigger than max_lines -
+        only a nested class that's still oversized gets subdivided again.
+        If the class has no members to split on (its body is plain
+        statements), it's left as one atomic block.
+        """
         original_end_line = block.end_line
         blocks_before = len(blocks.get_blocks())
         self._split_by_depth_key(
-            labels, block.start_line, original_end_line, depth, blocks)
+            labels, block.start_line, original_end_line, depth + 1, blocks)
 
         if len(blocks.get_blocks()) == blocks_before:
-            self._split_on_empty_lines_or_max_lines(
-                labels, blocks, block, max_lines)
             return
 
         current = block
         while current is not None and current.start_line <= original_end_line:
-            if current.length() > max_lines:
-                self.subdivide_block(
+            if current.length() > max_lines and self._is_class(labels, current, depth + 1):
+                self._subdivide_class(
                     labels, blocks, current, max_lines, depth + 1)
-            current = blocks.next(current)
-
-    def _split_on_empty_lines_or_max_lines(self, labels: list, blocks: CodeSegmentation, block: CodeBlock, max_lines: int):
-        original_end_line = block.end_line
-
-        for i in range(block.start_line + 1, original_end_line + 1):
-            if labels[i] == "e" and labels[i - 1] != "e":
-                blocks.split_at(i)
-
-        current = block
-        while current is not None and current.start_line <= original_end_line:
-            if current.length() > max_lines:
-                blocks.split_at(current.start_line + max_lines)
-                continue
             current = blocks.next(current)
 
     def merge_blocks(self, blocks: CodeSegmentation, max_lines: int, num_segments: int = 1) -> CodeSegmentation:
@@ -158,7 +161,9 @@ class BalancedCodeDivider(CodeDivider):
         (remaining_lines / remaining_segments), so a segment that came out
         smaller than average raises the bar for the ones after it - self
         correcting instead of committing to one static number for the whole
-        file. max_lines is still respected everywhere as a hard ceiling.
+        file. max_lines is still respected as a cap on merging - an
+        already-oversized atomic block is simply left on its own rather than
+        merged into something even bigger.
         """
         remaining_lines = sum(block.length() for block in blocks.get_blocks())
         remaining_segments = num_segments

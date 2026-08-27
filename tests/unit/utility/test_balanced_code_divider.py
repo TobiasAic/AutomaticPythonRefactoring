@@ -45,13 +45,39 @@ def test_large_code_is_split_into_multiple_segments_targeting_approximate_lines(
     assert len(segments) == expected_num_segments
 
 
-def test_no_segment_exceeds_max_lines_even_for_a_single_oversized_function():
+def test_an_oversized_function_is_kept_atomic_even_though_it_exceeds_max_lines():
     long_body = "\n".join(f"    x{j} = {j}" for j in range(100))
     code = f"def big():\n{long_body}\n    return x0\n"
 
     divider = BalancedCodeDivider(approximate_lines=20)
     segments = divider.divide(code)
 
-    for segment in segments:
-        assert len(segment.code.splitlines()) <= divider.max_lines
+    assert len(segments) == 1
+    assert len(segments[0].code.splitlines()) > divider.max_lines
+    assert segments[0].code == code
+
+
+def test_an_oversized_statement_block_is_kept_atomic_even_though_it_exceeds_max_lines():
+    code = "\n".join(f"x{j} = {j}" for j in range(100)) + "\n"
+
+    divider = BalancedCodeDivider(approximate_lines=20)
+    segments = divider.divide(code)
+
+    assert len(segments) == 1
+    assert len(segments[0].code.splitlines()) > divider.max_lines
+    assert segments[0].code == code
+
+
+def test_an_oversized_class_is_subdivided_into_its_methods():
+    long_method_body = "\n".join(f"        x{j} = {j}" for j in range(30))
+    methods = "\n".join(
+        f"    def m{i}(self):\n{long_method_body}\n        return x0\n"
+        for i in range(4)
+    )
+    code = f"class Big:\n{methods}"
+
+    divider = BalancedCodeDivider(approximate_lines=20)
+    segments = divider.divide(code)
+
+    assert len(segments) > 1
     assert "".join(segment.code for segment in segments) == code

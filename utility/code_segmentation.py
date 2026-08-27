@@ -11,6 +11,14 @@ class CodeBlock:
 
 
 class CodeSegmentation:
+    """A mutable partition of `code_line_count` lines into adjacent, gapless CodeBlocks.
+
+    Starts as a single block spanning every line. `split_at` and
+    `merge_with_next` carve it up or recombine it; `__ensure_valid_segments`
+    runs after every mutation to guarantee the blocks always stay contiguous
+    and in order, with no gaps or overlaps.
+    """
+
     def __init__(self, code_line_count: int):
         self.code_line_count = code_line_count
         self.code_blocks = [CodeBlock(0, code_line_count - 1)]
