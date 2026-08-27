@@ -117,7 +117,11 @@ class RefactoringSystem:
             with self._refactoring_applied(refactoring, filepath):
                 refactoring.set_compiles(Compiler.try_compile_file(filepath))
                 refactoring.set_tests_changed(self.tester.test_changed())
-                refactoring.set_metrics(ReadabilityAnalyzer.analyze_file(filepath))
+                try:
+                    refactoring.set_metrics(ReadabilityAnalyzer.analyze_file(filepath))
+                except Exception as e:
+                    CLI.print_error(f"Error analyzing readability metrics for {filepath}: {e}")
+                    refactoring.set_metrics(None)
 
         sorted_refactorings = self._sort_refactorings_by_evaluation(refactoring_suggestions)
         self._print_refactorings(sorted_refactorings)
