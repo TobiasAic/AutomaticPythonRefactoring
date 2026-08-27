@@ -147,8 +147,11 @@ class RefactoringSystem:
 
         if self.config.show_tree:
            self.apply_all_refactorings(sorted_refactorings, filepath, segment_id)
-        else:
+        elif final_candidates:
             self.apply_best_refactoring(final_candidates[0], filepath)
+        else:
+            CLI.print_debug(
+                f"No valid refactoring found for segment in {filepath}.")
 
     def apply_best_refactoring(self, best_refactoring: Refactoring, filepath: str):
         self.apply_refactoring(best_refactoring, filepath, remember=True)
