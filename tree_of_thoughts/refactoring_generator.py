@@ -17,13 +17,14 @@ class RefactoringGenerator:
     prompt = dedent("""
     You are generating a refactoring candidate for a Python file or a part of it to improve readability.
 
+    {category_prompt}
+
+    Find exactly one small refactoring in this category for the code below.
+
     This is the Python file or segment to refactor:
     {code_segment}
     This segment could be part of a larger file, so you should not assume that it is the entire file.
-    It could be part of a larger class or function. 
-    Do not change the indentation.
-
-    Find exactly one small refactoring from the category specified below.
+    It could be part of a larger class or function.
 
     The refactoring must:
     - Improve readability.
@@ -31,18 +32,17 @@ class RefactoringGenerator:
     - Not change public APIs.
     - Not add imports.
     - Not rename functions, parameters, or classes.
-    - Not repeat a refactoring already performed in the commit history.
+    - Not change the indentation of any code you keep.
+    - Not repeat a refactoring already performed in the commit history below.
 
-    Commit history:
+    Commit history (most recent first):
     {commit_history}
 
     Prefer a real readability improvement over a cosmetic change.
 
-    You must express your answer only by calling one of the tools listed below - never as text.
-    There are specific tools for some refactorings.
-    If you can use a specific tool for the refactoring you want to perform, use it instead of the generic `apply_edits` tool.
-    If you can't find a specific tool for the refactoring you want to perform, use the `apply_edits` tool.
-    It lets you return only the changed code instead of the entire segment.
+    You must express your answer by calling exactly one tool - never as text, and never more than one call.
+    Some refactorings have a dedicated tool (e.g. extract_method, multi_rename) - use it instead of the generic `apply_edits` tool whenever it applies.
+    Otherwise use `apply_edits`, which lets you return only the changed code instead of rewriting the whole segment.
     Each edit's old_code must match the segment exactly once, verbatim.
     If you can't find a refactoring in this category that significantly improves readability, call the `no_refactoring` tool.
     """).strip()
@@ -82,10 +82,7 @@ class RefactoringGenerator:
             List[Refactoring]: A list of generated refactoring candidates.
         """
         code_segment = code_file.get_segment(segment_id).code
-        prompt = self.prompt.format(
-            code_segment=code_segment,
-            commit_history=commit_history
-        )
+        commit_history_text = self.__format_commit_history(commit_history)
 
         round_categories = random.sample(
             categories, min(self.count, len(categories)))
@@ -99,9 +96,14 @@ class RefactoringGenerator:
             for category in round_categories
         ]
 
-        prompts = []
-        for category in round_categories:
-            prompts.append(f"{prompt}\n\n{category.get_prompt()}")
+        prompts = [
+            self.prompt.format(
+                code_segment=code_segment,
+                commit_history=commit_history_text,
+                category_prompt=category.get_prompt(),
+            )
+            for category in round_categories
+        ]
 
         llm_responses = self.llm.batch_generate(prompts, tools)
 
@@ -126,6 +128,13 @@ class RefactoringGenerator:
                 refactorings.append(refactoring)
 
         return refactorings
+
+    @staticmethod
+    def __format_commit_history(commit_history: list) -> str:
+        """ Render commit messages as a readable bullet list instead of a raw Python list. """
+        if not commit_history:
+            return "(no commits yet)"
+        return "\n".join(f"- {message.strip()}" for message in commit_history)
 
     def __handle_tool_call_response(self, tool_call: ToolCall, code_file: CodeFile, segment_id: int) -> Refactoring | None:
         """ Generate a Refactoring object from a tool call response from the LLM. """
