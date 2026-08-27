@@ -114,7 +114,7 @@ class RefactoringSystem:
         self.refactoring_evaluator.batch_evaluate(refactoring_suggestions)
 
         for refactoring in refactoring_suggestions:
-            with self._refactoring_applied():
+            with self._refactoring_applied(refactoring, filepath):
                 refactoring.set_compiles(Compiler.try_compile_file(filepath))
                 refactoring.set_tests_changed(self.tester.test_changed())
                 refactoring.set_metrics(ReadabilityAnalyzer.analyze_file(filepath))
@@ -133,11 +133,11 @@ class RefactoringSystem:
             CLI.print_debug(f"No valid refactoring found for segment in {filepath}.")
 
     def _apply_best_refactoring(self, best_refactoring: Refactoring, filepath: str):
-        self._apply_refactoring(best_refactoring, filepath, remember=True)
+        self._apply_refactoring(best_refactoring, filepath)
         self.git_repository.commit_changes(best_refactoring.get_commit_message())
-        print(f"Applied best refactoring. MI is now {best_refactoring.metrics.mi:.2f}.")
+        print(f"Applied best refactoring. MI is now {best_refactoring.metrics.maintainability_index:.2f}.")
 
-    def _apply_all_refactorings(self, sorted_refactorings: list[Refactoring], filepath: str, code_segment_id: int):
+    def _apply_all_refactorings(self, sorted_refactorings: list[Refactoring], filepath: str):
         if len(sorted_refactorings) == 0:
             return
 
@@ -145,13 +145,13 @@ class RefactoringSystem:
 
         for refactoring in sorted_refactorings:
             self.git_repository.create_branch(
-                f"{self.state.file_index}_{self.state.iteration}_{code_segment_id}_{refactoring.category.get_name()}")
-            self._apply_refactoring(refactoring, filepath, remember=False)
+                f"{self.state.file_index}_{self.state.iteration}_{refactoring.category.get_name()}")
+            self._apply_refactoring(refactoring, filepath)
             self.git_repository.commit_changes(refactoring.get_commit_message())
             if not best_refactoring_found and refactoring.is_valid():
                 best_refactoring_found = True
                 self.git_repository.move_branch(self.config.branch_name)
-                print(f"Applied best refactoring. MI is now {refactoring.metrics.mi:.2f}.")
+                print(f"Applied best refactoring. MI is now {refactoring.metrics.maintainability_index:.2f}.")
             self.git_repository.go_to_previous_commit()
         self.git_repository.checkout_branch(self.config.branch_name)
 
