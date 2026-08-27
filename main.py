@@ -6,7 +6,6 @@ from llm.openai_llm import OpenAILLM
 from llm.parallel_llm import ParallelLLM
 from llm.retrying_llm import RetryingLLM
 from refactoring_system import RefactoringSystem
-from utility.balanced_code_divider import BalancedCodeDivider
 from utility.cli import CLI
 from utility.config import load_from_toml
 
@@ -23,11 +22,11 @@ if __name__ == '__main__':
     print("Running the refactoring system with the following parameters:")
     print(str(config))
 
-    llm = ParallelLLM(RetryingLLM(OpenAILLM(qwen3_7_plus_config), max_retries=3, delay_seconds=10.0))
+    llm = ParallelLLM(RetryingLLM(OpenAILLM(qwen3_7_plus_config),
+                      max_retries=3, delay_seconds=10.0))
     refactoring_idea_count = 3  # Number of refactoring ideas to generate per segment
-    code_divider_class = BalancedCodeDivider  # Use the new code divider class
-    approximate_segment_length = 500  # Approximate length of each code segment
+    category_attempt_count = 3  # Number of attempts to generate refactorings for each category
 
     refactoring_system = RefactoringSystem(
-        config, llm, refactoring_idea_count, code_divider_class, approximate_segment_length)
+        config, llm, refactoring_idea_count, category_attempt_count)
     refactoring_system.run()
