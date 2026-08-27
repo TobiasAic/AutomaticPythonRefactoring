@@ -86,7 +86,7 @@ class RefactoringSystem:
 
     def _refactor_segment(self, segment_id: int, filepath: str, categories: list[RefactoringCategory]):
         CLI.print_banner(
-            f"Segment {segment_id + 1} - Current MI: {self.readability_analyzer.metrics[filepath][-1].maintainability_index}", symbol="-")
+            f"Segment {segment_id + 1}", symbol="-")
         commit_history = self.git_repository.get_commit_history()
         refactoring_suggestions = self.refactoring_generator.generate_refactorings(
             self.code_file, segment_id, commit_history=commit_history, categories=categories)
