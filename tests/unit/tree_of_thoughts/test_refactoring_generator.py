@@ -18,9 +18,32 @@ class ScriptedLLM:
         return self.responses
 
 
-def test_init_rejects_count_exceeding_available_categories():
+def test_init_rejects_non_positive_count():
     with pytest.raises(ValueError):
-        RefactoringGenerator(ScriptedLLM([]), count=len(ALL_CATEGORIES) + 1)
+        RefactoringGenerator(ScriptedLLM([]), count=0)
+
+
+def test_init_rejects_negative_count():
+    with pytest.raises(ValueError):
+        RefactoringGenerator(ScriptedLLM([]), count=-1)
+
+
+def test_init_allows_count_exceeding_available_categories():
+    # A count larger than the number of categories is fine - generate_refactorings
+    # simply selects all categories that are still available for a segment.
+    RefactoringGenerator(ScriptedLLM([]), count=len(ALL_CATEGORIES) + 1)
+
+
+def test_generate_refactorings_selects_all_categories_when_fewer_remain_than_count():
+    response = LLMResponse(tool_call=ToolCall(name="no_refactoring", arguments="{}"))
+    llm = ScriptedLLM([response])
+    generator = RefactoringGenerator(llm, count=len(ALL_CATEGORIES) + 1)
+    categories = [CONDITIONAL_LOGIC]
+
+    generator.generate_refactorings(single_segment_code_file("x = 1\n"), 0, commit_history=[], categories=categories)
+
+    prompts, tools, require_tool_call = llm.batch_calls[0]
+    assert len(prompts) == 1  # only the one remaining category was used, not `count` many
 
 
 def test_generate_refactorings_removes_category_when_llm_finds_nothing():

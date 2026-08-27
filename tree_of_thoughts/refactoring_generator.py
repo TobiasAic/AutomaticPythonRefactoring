@@ -8,7 +8,7 @@ from refactoring.apply_edits_refactoring import ApplyEditsTool
 from refactoring.extract_method_refactoring import ExtractMethodTool
 from refactoring.multi_rename_refactoring import MultiRenameTool
 from refactoring.refactoring import Refactoring
-from tree_of_thoughts.refactoring_category import ALL_CATEGORIES, RefactoringCategory
+from tree_of_thoughts.refactoring_category import RefactoringCategory
 from utility.cli import CLI
 from utility.code_file import CodeFile
 
@@ -62,9 +62,8 @@ class RefactoringGenerator:
 
     def __init__(self, llm: LLM, count: int = 1):
         self.llm = llm
-        if count > len(ALL_CATEGORIES) and count > 0:
-            raise ValueError(
-                f"Count {count} exceeds the number of available categories {len(ALL_CATEGORIES)} or is not positive.")
+        if count <= 0:
+            raise ValueError(f"Count must be a positive integer, got {count}.")
         self.count = count
 
     def generate_refactorings(self, code_file: CodeFile, segment_id: int, commit_history: list, categories: list[RefactoringCategory]) -> list[Refactoring]:
