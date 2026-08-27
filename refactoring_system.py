@@ -51,7 +51,8 @@ class RefactoringSystem:
         # Run tests before starting the refactoring process to establish a baseline
         print(f"Test results before refactoring: {self.tester.test_before()}")
 
-        # TODO: Record the initial metrics
+        print(f"Analyzing readability metrics for {filepath}...")
+        print(ReadabilityAnalyzer.analyze_file(filepath))
 
         code = self._read_file(filepath)
         self.code_file = CodeFile(code, self.code_divider_class(self.approximate_segment_length))
