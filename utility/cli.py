@@ -1,4 +1,6 @@
 import inspect
+import time
+from datetime import timedelta
 
 
 class CLI:
@@ -59,3 +61,12 @@ class CLI:
     def __get_class_name(frame):
         self_obj = frame.f_locals.get("self")
         return type(self_obj).__name__ if self_obj else None
+
+    @staticmethod
+    def print_with_duration(message: str):
+        start = time.time()
+        yield
+        print(f"{message} This took {CLI._format_timespan(time.time() - start)}.")
+
+    def _format_timespan(seconds: float) -> str:
+        return str(timedelta(seconds=seconds))
