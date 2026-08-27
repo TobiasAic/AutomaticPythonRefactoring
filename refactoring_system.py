@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from llm.llm import LLM
@@ -62,7 +63,11 @@ class RefactoringSystem:
         print(f"Test results before refactoring: {self.tester.test_before()}")
 
         print(f"Analyzing readability metrics for {filepath}...")
-        print(ReadabilityAnalyzer.analyze_file(filepath))
+        initial_metrics = ReadabilityAnalyzer.analyze_file(filepath)
+        print(initial_metrics)
+        self.git_repository.commit_changes(
+            f"chore: record initial readability metrics for {Path(filepath).name}\n\n"
+            f"Metrics:\n{json.dumps(initial_metrics.to_dict(), indent=2)}")
 
         for iteration in range(self.state.iteration, self.config.max_iterations):
             with CLI.print_with_duration(f"Iteration {iteration + 1} completed"):
