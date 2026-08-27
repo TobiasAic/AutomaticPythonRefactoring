@@ -1,3 +1,5 @@
+# AI-generated
+
 import os
 
 from utility.config import Config, load_from_toml

@@ -1,9 +1,11 @@
+# AI-generated
+
 from refactoring.extract_method_refactoring import (
     ExtractMethodArguments,
     ExtractMethodRefactoring,
     ExtractMethodTool,
 )
-from tests.unit.refactoring.shared import example_code_file_path, read_file, single_segment_code_file
+from tests.unit.refactoring.shared import example_code_file_path, read_file
 
 
 def test_extract_method_refactoring():
@@ -13,10 +15,9 @@ def test_extract_method_refactoring():
         '\tprint(f"Tasks: {len(tasks)}")\n'
         '\tprint(f"Progress: {progress:.0%}")\n'
     )
-    code_file = single_segment_code_file(original_code)
 
     extract_method_refactoring = ExtractMethodRefactoring(
-        code_file, 0, refactoring_arguments=ExtractMethodArguments(code_to_extract=code_to_extract, new_name="extracted_method"))
+        original_code, refactoring_arguments=ExtractMethodArguments(code_to_extract=code_to_extract, new_name="extracted_method"))
 
     expected_code = read_file("tests/test_files/extracted_method.py")
     assert extract_method_refactoring.new_code == expected_code
@@ -36,9 +37,8 @@ def test_call_builds_refactoring_from_arguments():
         '\tprint(f"Progress: {progress:.0%}")\n'
     )
     arguments = {"code_to_extract": code_to_extract, "new_name": "extracted_method"}
-    code_file = single_segment_code_file(original_code)
 
-    refactoring = ExtractMethodTool.call(code_file, 0, arguments)
+    refactoring = ExtractMethodTool.call(original_code, arguments)
 
     expected_code = read_file("tests/test_files/extracted_method.py")
     assert refactoring.new_code == expected_code
@@ -47,8 +47,7 @@ def test_call_builds_refactoring_from_arguments():
 def test_call_returns_none_when_code_to_extract_does_not_match():
     original_code = read_file(example_code_file_path)
     arguments = {"code_to_extract": "not_present_in_file()", "new_name": "extracted_method"}
-    code_file = single_segment_code_file(original_code)
 
-    refactoring = ExtractMethodTool.call(code_file, 0, arguments)
+    refactoring = ExtractMethodTool.call(original_code, arguments)
 
     assert refactoring is None

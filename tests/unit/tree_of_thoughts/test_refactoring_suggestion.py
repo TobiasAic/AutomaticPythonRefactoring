@@ -1,3 +1,5 @@
+# AI-generated
+
 from tree_of_thoughts.refactoring_suggestion import (
     ExtractFunction,
     RefactoringSuggestion,

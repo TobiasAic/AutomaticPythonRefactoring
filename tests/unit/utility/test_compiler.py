@@ -1,3 +1,5 @@
+# AI-generated
+
 from utility.compiler import Compiler
 
 

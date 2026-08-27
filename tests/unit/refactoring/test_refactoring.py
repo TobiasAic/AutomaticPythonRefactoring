@@ -1,3 +1,5 @@
+# AI-generated
+
 from refactoring.refactoring import Refactoring
 from refactoring.refactoring_evaluation import RefactoringEvaluation
 from tree_of_thoughts.refactoring_category import CODE_QUALITY

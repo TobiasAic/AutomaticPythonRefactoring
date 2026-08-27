@@ -1,3 +1,5 @@
+# AI-generated
+
 import pytest
 
 from refactoring.refactoring_evaluation import RefactoringEvaluation

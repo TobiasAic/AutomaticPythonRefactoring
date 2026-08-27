@@ -1,3 +1,5 @@
+# AI-generated
+
 from utility.refactoring_system_state import RefactoringSystemState
 from tree_of_thoughts.refactoring_category import ALL_CATEGORIES, CODE_QUALITY
 
@@ -7,40 +9,27 @@ def test_new_state_has_default_progress_values():
 
     assert state.file_index == 0
     assert state.iteration == 0
-    assert state.segment_index == 0
-    assert state.categories_by_segment == {}
+    assert state.categories == {category: 1 for category in ALL_CATEGORIES}
 
 
-def test_categories_for_segment_returns_all_categories_on_first_access():
-    state = RefactoringSystemState()
+def test_initial_gives_every_category_the_given_attempt_count():
+    state = RefactoringSystemState.initial(category_count=3, file_index=2)
 
-    categories = state.categories_for_segment(0)
-
-    assert categories == list(ALL_CATEGORIES)
-
-
-def test_categories_for_segment_reflects_previous_mutation():
-    state = RefactoringSystemState()
-    categories = state.categories_for_segment(0)
-    categories.remove(CODE_QUALITY)
-
-    assert state.categories_for_segment(0) == categories
-    assert CODE_QUALITY not in state.categories_for_segment(0)
+    assert state.file_index == 2
+    assert state.categories == {category: 3 for category in ALL_CATEGORIES}
 
 
 def test_save_and_load_round_trip(tmp_path):
     path = tmp_path / "state.json"
-    state = RefactoringSystemState(file_index=2, iteration=5, segment_index=1)
-    state.categories_for_segment(0).remove(CODE_QUALITY)
+    state = RefactoringSystemState(file_index=2, iteration=5)
+    state.categories[CODE_QUALITY] = 0
     state.save(str(path))
 
     loaded = RefactoringSystemState.load(str(path))
 
     assert loaded.file_index == 2
     assert loaded.iteration == 5
-    assert loaded.segment_index == 1
-    assert loaded.categories_by_segment.keys() == {0}
-    assert CODE_QUALITY not in loaded.categories_by_segment[0]
+    assert loaded.categories[CODE_QUALITY] == 0
 
 
 def test_bind_autosaves_on_every_field_change(tmp_path):

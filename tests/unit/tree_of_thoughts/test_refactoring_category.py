@@ -1,3 +1,5 @@
+# AI-generated
+
 from tree_of_thoughts.refactoring_category import (
     ALL_CATEGORIES,
     CATEGORIES_BY_NAME,

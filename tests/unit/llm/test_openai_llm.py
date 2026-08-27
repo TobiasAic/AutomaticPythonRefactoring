@@ -1,3 +1,5 @@
+# AI-generated
+
 from types import SimpleNamespace
 
 import pytest

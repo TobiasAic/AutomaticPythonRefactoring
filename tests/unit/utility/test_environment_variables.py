@@ -1,3 +1,5 @@
+# AI-generated
+
 import pytest
 
 from utility.environment_variables import get_env_variable

@@ -1,9 +1,12 @@
+# AI-generated
+
 from types import SimpleNamespace
 
 from refactoring.refactoring import Refactoring
 from refactoring.refactoring_evaluation import RefactoringEvaluation
 from refactoring_system import RefactoringSystem
-from tests.unit.refactoring.shared import single_segment_code_file
+from tree_of_thoughts.refactoring_category import CONDITIONAL_LOGIC
+from utility.refactoring_system_state import RefactoringSystemState
 
 
 class FakeGitRepository:
@@ -33,7 +36,7 @@ class FakeGenerator:
     def __init__(self, refactorings):
         self._refactorings = refactorings
 
-    def generate_refactorings(self, code_file, segment_id, commit_history, categories):
+    def generate_refactorings(self, code, commit_history, categories):
         return self._refactorings
 
 
@@ -50,48 +53,6 @@ def make_refactoring(correct: bool, grade: int, compiles: bool = True, tests_cha
     refactoring.set_compiles(compiles)
     refactoring.set_tests_changed(tests_changed)
     return refactoring
-
-
-def test_format_timespan_formats_seconds_as_h_mm_ss():
-    system = make_system()
-
-    assert system._format_timespan(3725) == "1:02:05"
-
-
-def test_is_valid_refactoring_requires_correct_positive_grade_compiling_and_unchanged_tests():
-    system = make_system()
-
-    assert system._is_valid_refactoring(make_refactoring(correct=True, grade=1)) is True
-
-
-def test_is_valid_refactoring_rejects_incorrect_refactoring():
-    system = make_system()
-
-    assert system._is_valid_refactoring(make_refactoring(correct=False, grade=1)) is False
-
-
-def test_is_valid_refactoring_rejects_non_positive_grade():
-    system = make_system()
-
-    assert system._is_valid_refactoring(make_refactoring(correct=True, grade=0)) is False
-
-
-def test_is_valid_refactoring_rejects_non_compiling_code():
-    system = make_system()
-
-    assert system._is_valid_refactoring(make_refactoring(correct=True, grade=1, compiles=False)) is False
-
-
-def test_is_valid_refactoring_rejects_when_tests_changed():
-    system = make_system()
-
-    assert system._is_valid_refactoring(make_refactoring(correct=True, grade=1, tests_changed=True)) is False
-
-
-def test_is_valid_refactoring_rejects_refactoring_without_evaluation():
-    system = make_system()
-
-    assert not system._is_valid_refactoring(Refactoring("old", "new"))
 
 
 def test_sort_refactorings_by_evaluation_orders_by_grade_descending():
@@ -127,38 +88,45 @@ def test_filter_refactorings_keeps_only_valid_refactorings():
     assert filtered == [valid]
 
 
-def test_refactoring_printable_string_reports_missing_evaluation():
+def test_categories_available_is_true_when_any_category_has_attempts_left():
     system = make_system()
-    refactoring = Refactoring("old", "new")
+    system.state = RefactoringSystemState.initial(1)
 
-    result = system._refactoring_printable_string(refactoring)
-
-    assert result == "no evaluation, no tool"
+    assert system._categories_available() is True
 
 
-def test_refactoring_printable_string_reports_evaluated_refactoring():
+def test_categories_available_is_false_when_all_categories_are_exhausted():
     system = make_system()
-    refactoring = make_refactoring(correct=True, grade=2)
+    system.state = RefactoringSystemState.initial(0)
 
-    result = system._refactoring_printable_string(refactoring)
-
-    assert result == "Correct, 2, desc, no tool"
+    assert system._categories_available() is False
 
 
-def test_refactoring_printable_string_uses_only_first_line_of_description():
+def test_remove_category_decrements_its_count():
     system = make_system()
-    refactoring = Refactoring("old", "new")
-    refactoring.set_evaluation(RefactoringEvaluation(description="first line\nsecond line", correct=False, grade=-1))
+    system.state = RefactoringSystemState.initial(2)
 
-    result = system._refactoring_printable_string(refactoring)
+    system.remove_category(CONDITIONAL_LOGIC)
 
-    assert result == "Incorrect, -1, first line, no tool"
+    assert system.state.categories[CONDITIONAL_LOGIC] == 1
 
 
-def test_refactor_segment_skips_commit_when_no_suggestion_is_valid(tmp_path):
-    """ Regression test: previously, when every generated refactoring was rejected by
-    is_valid_refactoring (e.g. all graded <= 0 or marked incorrect), refactor_segment
-    crashed with an IndexError instead of leaving the segment untouched. """
+def test_refactoring_applied_writes_new_code_then_restores_original(tmp_path):
+    filepath = tmp_path / "example.py"
+    filepath.write_text("a = 1\n")
+    system = make_system()
+    refactoring = Refactoring(old_code="a = 1\n", new_code="a = 2\n")
+
+    with system._refactoring_applied(refactoring, str(filepath)):
+        assert filepath.read_text() == "a = 2\n"
+
+    assert filepath.read_text() == "a = 1\n"
+
+
+def test_do_iteration_skips_commit_when_no_suggestion_is_valid(tmp_path):
+    """ Regression test: when every generated refactoring is rejected (e.g. graded <= 0
+    or marked incorrect), an iteration should leave the file and commit history untouched
+    instead of committing or crashing. """
     code = "a = 1\n"
     filepath = tmp_path / "example.py"
     filepath.write_text(code)
@@ -166,17 +134,15 @@ def test_refactor_segment_skips_commit_when_no_suggestion_is_valid(tmp_path):
 
     system = make_system()
     system.config = SimpleNamespace(show_tree=False)
-    system.code_file = single_segment_code_file(code)
-    system.readability_analyzer = SimpleNamespace(
-        metrics={filepath: [SimpleNamespace(maintainability_index=50.0)]})
     system.git_repository = FakeGitRepository()
     system.tester = FakeTester()
     system.refactoring_evaluator = FakeEvaluator()
+    system.state = RefactoringSystemState.initial(1)
 
     invalid_refactoring = make_refactoring(correct=False, grade=3)
     system.refactoring_generator = FakeGenerator([invalid_refactoring])
 
-    system._refactor_segment(0, filepath, categories=[])
+    system._do_iteration(filepath)
 
     assert system.git_repository.commits == []
     assert open(filepath).read() == code
