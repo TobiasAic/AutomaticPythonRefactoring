@@ -1,4 +1,5 @@
 import argparse
+import random
 from pathlib import Path
 
 from llm.llm_presets import qwen3_7_plus_config
@@ -14,13 +15,18 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Automatic Python Refactoring Tool')
     parser.add_argument('config_path', help='Path to config file')
+    parser.add_argument('--seed', type=int, default=42,
+                         help='Random seed for category selection (default: 42)')
     args = parser.parse_args()
+
+    random.seed(args.seed)
 
     full_config_path = Path(args.config_path).absolute().resolve()
     config = load_from_toml(full_config_path)
 
     print("Running the refactoring system with the following parameters:")
     print(str(config))
+    print(f"Random seed: {args.seed}")
 
     llm = ParallelLLM(RetryingLLM(OpenAILLM(qwen3_7_plus_config),
                       max_retries=3, delay_seconds=10.0))
