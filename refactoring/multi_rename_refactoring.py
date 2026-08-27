@@ -141,6 +141,6 @@ class MultiRenameTool(RefactoringTool):
         try:
             return MultiRenameRefactoring(code_file, segment_id, rename_arguments)
         except Exception as e:
-            CLI.print_error(f"Failed to create MultiRenameRefactoring for code_segment with rename arguments {rename_arguments}. Error: {e}")
+            CLI.print_error(f"Failed to create MultiRenameRefactoring. Error: {e}")
             return None
 

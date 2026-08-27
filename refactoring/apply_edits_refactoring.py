@@ -102,7 +102,7 @@ class ApplyEditsTool(RefactoringTool):
         try:
             return ApplyEditsRefactoring(code_file, segment_id, edits)
         except Exception as e:
-            CLI.print_error(f"Failed to create ApplyEditsRefactoring with edits {edits}. Error: {e}")
+            CLI.print_error(f"Failed to create ApplyEditsRefactoring with edits. Error: {e}")
             return None
 
     @staticmethod

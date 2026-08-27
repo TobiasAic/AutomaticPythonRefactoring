@@ -86,6 +86,6 @@ class ExtractMethodTool(RefactoringTool):
         try:
             return ExtractMethodRefactoring(code_file, segment_id, ExtractMethodArguments(code_to_extract=code_to_extract, new_name=new_name))
         except Exception as e:
-            CLI.print_error(f"Failed to create ExtractMethodRefactoring for code_to_extract {code_to_extract!r} with new method name '{new_name}'. Error: {e}")
+            CLI.print_error(f"Failed to create ExtractMethodRefactoring with new method name '{new_name}'. Error: {e}")
             return None
 
