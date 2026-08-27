@@ -133,6 +133,7 @@ class RefactoringSystem:
     def _apply_best_refactoring(self, best_refactoring: Refactoring, filepath: str):
         self._apply_refactoring(best_refactoring, filepath, remember=True)
         self.git_repository.commit_changes(best_refactoring.get_commit_message())
+        print(f"Applied best refactoring. MI is now {best_refactoring.metrics.mi:.2f}.")
 
     def _apply_all_refactorings(self, sorted_refactorings: list[Refactoring], filepath: str, code_segment_id: int):
         if len(sorted_refactorings) == 0:
@@ -148,6 +149,7 @@ class RefactoringSystem:
             if not best_refactoring_found and refactoring.is_valid():
                 best_refactoring_found = True
                 self.git_repository.move_branch(self.config.branch_name)
+                print(f"Applied best refactoring. MI is now {refactoring.metrics.mi:.2f}.")
             self.git_repository.go_to_previous_commit()
         self.git_repository.checkout_branch(self.config.branch_name)
 
