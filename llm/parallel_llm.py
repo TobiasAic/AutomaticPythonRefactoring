@@ -13,6 +13,7 @@ class ParallelLLM:
         self,
         prompts: list[str],
         tools: list[list[dict]] | None = None,
+        require_tool_call: bool = False,
     ):
         if tools is None:
             tools = [[] for _ in prompts]
@@ -30,7 +31,7 @@ class ParallelLLM:
 
         with ThreadPoolExecutor(max_workers=len(prompts)) as executor:
             futures = {
-                executor.submit(self._llm.generate, prompt, tool): i
+                executor.submit(self._llm.generate, prompt, tool, require_tool_call=require_tool_call): i
                 for i, (prompt, tool) in enumerate(zip(prompts, tools))
             }
 

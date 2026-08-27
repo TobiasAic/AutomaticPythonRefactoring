@@ -13,8 +13,8 @@ class ScriptedLLM:
         self.responses = responses
         self.batch_calls = []
 
-    def batch_generate(self, prompts, tools):
-        self.batch_calls.append((prompts, tools))
+    def batch_generate(self, prompts, tools, require_tool_call=False):
+        self.batch_calls.append((prompts, tools, require_tool_call))
         return self.responses
 
 
@@ -88,10 +88,11 @@ def test_generate_refactorings_passes_code_segment_history_and_category_prompt_t
 
     generator.generate_refactorings(single_segment_code_file("x = 1\n"), 0, commit_history=["prior commit"], categories=[CONDITIONAL_LOGIC])
 
-    prompts, tools = llm.batch_calls[0]
+    prompts, tools, require_tool_call = llm.batch_calls[0]
     assert len(prompts) == 1
     assert "x = 1" in prompts[0]
     assert "prior commit" in prompts[0]
     assert "CONDITIONAL_LOGIC" in prompts[0]
     assert any(tool["function"]["name"] == "apply_edits" for tool in tools[0])
     assert any(tool["function"]["name"] == "no_refactoring" for tool in tools[0])
+    assert require_tool_call is True

@@ -105,7 +105,7 @@ class RefactoringGenerator:
             for category in round_categories
         ]
 
-        llm_responses = self.llm.batch_generate(prompts, tools)
+        llm_responses = self.llm.batch_generate(prompts, tools, require_tool_call=True)
 
         refactorings = []
         for i, response in enumerate(llm_responses):

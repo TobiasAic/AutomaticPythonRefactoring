@@ -16,13 +16,15 @@ class FakeLLM:
         self.model_name = "fake-model"
         self.calls: list[tuple[str, list[dict]]] = []
         self.calls_by_prompt: dict[str, list[dict]] = {}
+        self.require_tool_call_by_prompt: dict[str, bool] = {}
         self._lock = threading.Lock()
 
-    def generate(self, prompt: str, tools: list[dict] | None = None):
+    def generate(self, prompt: str, tools: list[dict] | None = None, require_tool_call: bool = False):
         tool_list = tools or []
         with self._lock:
             self.calls.append((prompt, tool_list))
             self.calls_by_prompt[prompt] = tool_list
+            self.require_tool_call_by_prompt[prompt] = require_tool_call
 
         if prompt == "slow":
             time.sleep(0.05)
@@ -79,6 +81,17 @@ def test_parallel_llm_preserves_result_order_and_tools(monkeypatch):
     }
 
 
+def test_parallel_llm_passes_require_tool_call_through(monkeypatch):
+    fake_llm = FakeLLM()
+    parallel_llm = ParallelLLM(fake_llm)
+
+    monkeypatch.setattr("llm.parallel_llm.tqdm", lambda *args, **kwargs: DummyProgressBar())
+
+    parallel_llm.batch_generate(["slow", "fast"], require_tool_call=True)
+
+    assert fake_llm.require_tool_call_by_prompt == {"slow": True, "fast": True}
+
+
 def test_parallel_llm_defaults_tools_to_empty_lists(monkeypatch):
     fake_llm = FakeLLM()
     parallel_llm = ParallelLLM(fake_llm)
@@ -113,7 +126,7 @@ class FlakyLLM:
         self.failures_before_success = failures_before_success
         self.attempts = 0
 
-    def generate(self, prompt: str, tools=None):
+    def generate(self, prompt: str, tools=None, require_tool_call: bool = False):
         self.attempts += 1
         if self.attempts <= self.failures_before_success:
             raise RuntimeError(f"attempt {self.attempts} failed")

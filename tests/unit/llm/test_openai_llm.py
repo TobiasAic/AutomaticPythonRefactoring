@@ -83,3 +83,28 @@ def test_batch_generate_rejects_mismatched_tool_counts(monkeypatch):
 
     with pytest.raises(ValueError, match="Length of tools list must match length of prompts list"):
         llm.batch_generate(["a", "b"], tools=[[]])
+
+
+def test_generate_defaults_to_auto_tool_choice(monkeypatch):
+    llm = make_llm(monkeypatch, text_response("hello"))
+
+    llm.generate("prompt")
+
+    assert llm.client.chat.completions.last_call_kwargs["tool_choice"] == "auto"
+
+
+def test_generate_requires_tool_call_when_requested(monkeypatch):
+    llm = make_llm(monkeypatch, tool_call_response("rename", "{}"))
+
+    llm.generate("prompt", require_tool_call=True)
+
+    assert llm.client.chat.completions.last_call_kwargs["tool_choice"] == "required"
+
+
+def test_batch_generate_passes_require_tool_call_through(monkeypatch):
+    llm = make_llm(monkeypatch, text_response("hello"))
+    monkeypatch.setattr("llm.openai_llm.tqdm", lambda iterable, **kwargs: iterable)
+
+    llm.batch_generate(["a"], require_tool_call=True)
+
+    assert llm.client.chat.completions.last_call_kwargs["tool_choice"] == "required"
