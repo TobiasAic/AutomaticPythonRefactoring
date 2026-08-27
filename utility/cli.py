@@ -1,5 +1,6 @@
 import inspect
 import time
+from contextlib import contextmanager
 from datetime import timedelta
 
 
@@ -63,6 +64,7 @@ class CLI:
         return type(self_obj).__name__ if self_obj else None
 
     @staticmethod
+    @contextmanager
     def print_with_duration(message: str):
         start = time.time()
         yield

@@ -1,4 +1,5 @@
 import json
+from contextlib import contextmanager
 from pathlib import Path
 
 from llm.llm import LLM
@@ -50,7 +51,8 @@ class RefactoringSystem:
                 f"Resuming from checkpoint: file {self.state.file_index + 1}, "
                 f"iteration {self.state.iteration + 1}, segment {self.state.segment_index + 1}")
         else:
-            self.state = RefactoringSystemState.initial(self.category_attempt_count).bind(self.state_path)
+            self.state = RefactoringSystemState.initial(
+                self.category_attempt_count).bind(self.state_path)
             if self.git_repository.branch_exists(self.config.branch_name):
                 self.git_repository.checkout_branch(self.config.branch_name)
             else:
@@ -139,7 +141,7 @@ class RefactoringSystem:
         if len(sorted_refactorings) == 0:
             return
 
-        best_refactoring_found = False 
+        best_refactoring_found = False
 
         for refactoring in sorted_refactorings:
             self.git_repository.create_branch(
@@ -170,6 +172,7 @@ class RefactoringSystem:
     def _apply_refactoring(self, refactoring: Refactoring, filepath):
         self._write_file(filepath, refactoring.new_code)
 
+    @contextmanager
     def _refactoring_applied(self, refactoring: Refactoring, filepath):
         original_code = self._read_file(filepath)
         self._apply_refactoring(refactoring, filepath)
