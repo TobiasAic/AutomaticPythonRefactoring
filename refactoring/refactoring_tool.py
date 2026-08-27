@@ -1,8 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Self
 
-from utility.code_file import CodeFile
-
 
 class RefactoringTool(ABC):
     """ Abstract base class for refactoring tools to be used by an LLM. """
@@ -13,5 +11,5 @@ class RefactoringTool(ABC):
 
     @staticmethod
     @abstractmethod
-    def call(code_file: CodeFile, segment_id: int, arguments: dict) -> Self:
+    def call(code: str, arguments: dict) -> Self:
         """ Calls the refactoring with the given arguments from the LLM. """

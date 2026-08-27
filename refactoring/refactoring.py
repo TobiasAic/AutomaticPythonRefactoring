@@ -1,7 +1,7 @@
 from __future__ import annotations
-import json
 
 import difflib
+import json
 from typing import TYPE_CHECKING
 
 from refactoring.refactoring_evaluation import RefactoringEvaluation
@@ -9,7 +9,6 @@ from utility.readability_analyzer import ReadabilityMetrics
 
 if TYPE_CHECKING:
     from tree_of_thoughts.refactoring_category import RefactoringCategory
-    from utility.code_file import CodeFile
 
 
 class Refactoring:
@@ -22,9 +21,6 @@ class Refactoring:
         self.compiles: bool = None
         self.tests_changed: bool = None
         self.metrics: ReadabilityMetrics = None
-        # Set by subclasses that edit a CodeFile, so a RefactoringSystem can adopt
-        # the resulting marker-tagged state directly instead of re-deriving it.
-        self.code_file: "CodeFile | None" = None
 
     def get_diff(self) -> str:
         """Returns a unified diff between the old and new code.
@@ -51,11 +47,12 @@ class Refactoring:
         grade = self.evaluation.grade if self.evaluation else "Missing grade"
         correct = self.evaluation.correct if self.evaluation else "Missing correctness"
         category = self.category.get_name() if self.category else "Missing category"
+        tool = self.tool_name()
         compiles = self.compiles if self.compiles is not None else "Missing compilation status"
         tests_changed = self.tests_changed if self.tests_changed is not None else "Missing test change status"
         metrics = self.metrics.to_dict() if self.metrics else "Missing metrics"
 
-        return f"{description}\n\nCategory: {category}\nGrade: {grade}\nCorrect: {correct}\nCompiles: {compiles}\nTests Changed: {tests_changed}\nMetrics:\n{json.dumps(metrics, indent=2)}"
+        return f"{description}\n\nCategory: {category}\nTool: {tool}\nGrade: {grade}\nCorrect: {correct}\nCompiles: {compiles}\nTests Changed: {tests_changed}\nMetrics:\n{json.dumps(metrics, indent=2)}"
 
     def tool_name(self) -> str:
         """ The name of the tool that produced this refactoring, or "no tool" for the free-text path. """

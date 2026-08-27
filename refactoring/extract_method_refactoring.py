@@ -9,7 +9,6 @@ from rope.refactor.extract import ExtractMethod
 from refactoring.refactoring_tool import RefactoringTool
 from refactoring.rope_refactoring import RopeRefactoring
 from utility.cli import CLI
-from utility.code_file import CodeFile
 
 
 @dataclass
@@ -19,7 +18,7 @@ class ExtractMethodArguments:
     new_name: str
 
 class ExtractMethodRefactoring(RopeRefactoring):
-    def execute_rope_refactoring(self, project: Project, filepath: str, code_file: CodeFile, segment_id: int, refactoring_arguments: ExtractMethodArguments) -> None:
+    def execute_rope_refactoring(self, project: Project, filepath: str, code: str, refactoring_arguments: ExtractMethodArguments) -> None:
         """Execute the extract method refactoring using Rope.
 
         Args:
@@ -33,7 +32,7 @@ class ExtractMethodRefactoring(RopeRefactoring):
             ValueError: If code_to_extract does not appear in the segment exactly once.
         """
         resource = libutils.path_to_resource(project, filepath)
-        start_offset, end_offset = self.__calculate_offsets(code_file, segment_id, refactoring_arguments.code_to_extract)
+        start_offset, end_offset = self.__calculate_offsets(code, refactoring_arguments.code_to_extract)
         extract_method = ExtractMethod(project, resource, start_offset=start_offset, end_offset=end_offset)
         changes = extract_method.get_changes(refactoring_arguments.new_name)
         project.do(changes)
@@ -41,14 +40,12 @@ class ExtractMethodRefactoring(RopeRefactoring):
     def tool_name(self) -> str:
         return "Extract Method"
 
-    def __calculate_offsets(self, code_file: CodeFile, segment_id: int, code_to_extract: str) -> tuple[int, int]:
-        segment_code = code_file.get_segment(segment_id).code
-        occurrences = segment_code.count(code_to_extract)
+    def __calculate_offsets(self, code: str, code_to_extract: str) -> tuple[int, int]:
+        occurrences = code.count(code_to_extract)
         if occurrences != 1:
             raise ValueError(
                 f"code_to_extract must match exactly once in the code segment, found {occurrences} occurrences: {code_to_extract!r}")
-        _, segment_offset = code_file.marked_code_and_offset(segment_id)
-        start_offset = segment_offset + segment_code.index(code_to_extract)
+        start_offset = code.index(code_to_extract)
         end_offset = start_offset + len(code_to_extract)
         return start_offset, end_offset
 
@@ -79,12 +76,12 @@ class ExtractMethodTool(RefactoringTool):
         },
     }
 
-    def call(code_file: CodeFile, segment_id: int, arguments: dict) -> ExtractMethodRefactoring:
+    def call(code: str, arguments: dict) -> ExtractMethodRefactoring:
         """ Calls the Extract Method refactoring with the given arguments from the LLM. """
         code_to_extract = arguments.get("code_to_extract")
         new_name = arguments.get("new_name")
         try:
-            return ExtractMethodRefactoring(code_file, segment_id, ExtractMethodArguments(code_to_extract=code_to_extract, new_name=new_name))
+            return ExtractMethodRefactoring(code, ExtractMethodArguments(code_to_extract=code_to_extract, new_name=new_name))
         except Exception as e:
             CLI.print_error(f"Failed to create ExtractMethodRefactoring with new method name '{new_name}'. Error: {e}")
             return None

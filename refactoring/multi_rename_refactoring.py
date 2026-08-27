@@ -9,7 +9,6 @@ from rope.refactor.rename import Rename
 from refactoring.refactoring_tool import RefactoringTool
 from refactoring.rope_refactoring import RopeRefactoring
 from utility.cli import CLI
-from utility.code_file import CodeFile
 
 
 @dataclass
@@ -19,7 +18,7 @@ class RenameArguments:
     old_name: str
     new_name: str
 
-def calculate_offset(code_file: CodeFile, segment_id: int, context_code: str, identifier: str) -> int:
+def calculate_offset(code: str, context_code: str, identifier: str) -> int:
     """ Calculates the offset of an identifier within a unique snippet of code in a segment.
 
     Args:
@@ -36,9 +35,8 @@ def calculate_offset(code_file: CodeFile, segment_id: int, context_code: str, id
         ValueError: If context_code does not appear in the segment exactly once, or identifier
             does not appear in context_code exactly once.
     """
-    segment_code = code_file.get_segment(segment_id).code
 
-    context_occurrences = segment_code.count(context_code)
+    context_occurrences = code.count(context_code)
     if context_occurrences != 1:
         raise ValueError(
             f"context_code must match exactly once in the code segment, found {context_occurrences} occurrences: {context_code!r}")
@@ -49,13 +47,12 @@ def calculate_offset(code_file: CodeFile, segment_id: int, context_code: str, id
         raise ValueError(
             f"old_name must match exactly once as a whole identifier within context_code, found {len(identifier_matches)} occurrences: {identifier!r}")
 
-    _, segment_offset = code_file.marked_code_and_offset(segment_id)
-    context_offset = segment_offset + segment_code.index(context_code)
+    context_offset = code.index(context_code)
     return context_offset + identifier_matches[0].start()
 
 
 class MultiRenameRefactoring(RopeRefactoring[list[RenameArguments]]):
-    def execute_rope_refactoring(self, project: Project, filepath: str, code_file: CodeFile, segment_id: int, refactoring_arguments: list[RenameArguments]) -> None:
+    def execute_rope_refactoring(self, project: Project, filepath: str, code: str, refactoring_arguments: list[RenameArguments]) -> None:
         """Execute the multi rename refactoring using Rope.
 
         Args:
@@ -65,12 +62,12 @@ class MultiRenameRefactoring(RopeRefactoring[list[RenameArguments]]):
             segment_id (int): The id of the segment the refactoring was generated from.
             refactoring_arguments (list[RenameArguments]): The arguments for the multi rename refactoring.
         """
-        current_code_file = code_file
+        current_code = code
         for argument in refactoring_arguments:
             resource = libutils.path_to_resource(project, filepath)
 
             try:
-                offset = calculate_offset(current_code_file, segment_id, argument.context_code, argument.old_name)
+                offset = calculate_offset(current_code, argument.context_code, argument.old_name)
             except ValueError as e:
                 CLI.print_error(f"Failed to calculate offset for argument {argument}. Error: {e}")
                 continue
@@ -82,7 +79,7 @@ class MultiRenameRefactoring(RopeRefactoring[list[RenameArguments]]):
             # Re-read so the next argument's offset is located against the effect of this rename,
             # which may have changed text anywhere in the file (rope renames every occurrence).
             with open(filepath, "r") as f:
-                current_code_file = current_code_file.with_new_marked_code(f.read())
+                current_code = f.read() 
 
     def tool_name(self) -> str:
         return "Multi Rename"
@@ -129,7 +126,7 @@ class MultiRenameTool(RefactoringTool):
                 }
                 }
 
-    def call(code_file: CodeFile, segment_id: int, arguments: dict) -> MultiRenameRefactoring:
+    def call(code: str, arguments: dict) -> MultiRenameRefactoring:
         """ Calls the Multi Rename refactoring with the given arguments from the LLM. """
         changes = arguments.get("changes", [])
         rename_arguments = []
@@ -139,7 +136,7 @@ class MultiRenameTool(RefactoringTool):
             new_name = change.get("new_name")
             rename_arguments.append(RenameArguments(context_code=context_code, old_name=old_name, new_name=new_name))
         try:
-            return MultiRenameRefactoring(code_file, segment_id, rename_arguments)
+            return MultiRenameRefactoring(code, rename_arguments)
         except Exception as e:
             CLI.print_error(f"Failed to create MultiRenameRefactoring. Error: {e}")
             return None

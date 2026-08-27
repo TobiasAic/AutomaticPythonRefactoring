@@ -1,12 +1,8 @@
-import json
 from dataclasses import asdict, dataclass
 
-import matplotlib.pyplot as plt
 from radon.complexity import cc_visit
 from radon.metrics import h_visit, mi_visit
 from radon.raw import analyze as raw_analyze
-
-from utility.cli import CLI
 
 
 @dataclass
@@ -57,23 +53,6 @@ class ReadabilityMetrics:
         print(f"Bugs: {self.halstead_bugs}")
         print(f"Maintainability Index (MI): {self.maintainability_index}")
 
-    def get_string_improvements(self, other: 'ReadabilityMetrics') -> str:
-        """Generate a string showing every metric compared to the passed metrics.
-
-        Args:
-            other (ReadabilityMetrics): The other ReadabilityMetrics object to compare against. 
-
-        Returns:
-            str: A string showing the changes in each metric.
-        """
-        improvements = []
-        for field in self.__dataclass_fields__:
-            old_value = getattr(self, field)
-            new_value = getattr(other, field)
-            if old_value != new_value:
-                improvements.append(f"{field}: {old_value} -> {new_value}")
-        return "\n".join(improvements)
-
     def to_dict(self) -> dict:
         return asdict(self)
 
@@ -82,20 +61,6 @@ class ReadabilityMetrics:
         return ReadabilityMetrics(**data)
 
 class ReadabilityAnalyzer:
-    def __init__(self):
-        self.metrics = dict()
-
-    def record_metrics(self, filepath: str):
-        """Analyze the metrics for a file and save them
-
-        Args:
-            filepath (str): The path to the file to analyze.
-        """
-        metrics = ReadabilityAnalyzer.analyze_file(filepath)
-        if self.metrics.get(filepath) is None:
-            self.metrics[filepath] = []
-        self.metrics[filepath].append(metrics)
-
     def analyze_file(filepath: str) -> ReadabilityMetrics:
         """Analyze the metrics for a file
 
@@ -150,74 +115,3 @@ class ReadabilityAnalyzer:
             halstead_bugs=round(halstead_results.total.bugs, 2),
             maintainability_index=round(mi_results, 2)
         )
-    
-    def save(self, filepath: str):
-        """Save the recorded metrics under the specified path
-
-        Args:
-            filepath (str): The path where the metrics should be saved.
-        """
-        with open(filepath, 'w') as file:
-            serializable_metrics = {
-                path: [asdict(metric) for metric in metrics_list]
-                for path, metrics_list in self.metrics.items()
-            }
-            json.dump(serializable_metrics, file)
-        CLI.print_debug(f"Saved readability metrics to {filepath}")
-
-    def load(self, filepath: str):
-        """Load the metrics from the specified path
-
-        Args:
-            filepath (str): The path from which to load the metrics.
-        """
-        with open(filepath, 'r') as file:
-            loaded_metrics = json.load(file)
-
-        self.metrics = {
-            path: [ReadabilityMetrics(**metric_data) for metric_data in metrics_list]
-            for path, metrics_list in loaded_metrics.items()
-        }
-
-    def plot_percentage_change(self, filepath: str, output_path: str = None):
-        """Plot the changes of the metrics in percent for a specified file
-
-        Args:
-            filepath (str): The path of the file for which to plot metrics.
-            output_path (str, optional): The path where the plot should be saved. Defaults to None.
-        """
-        if len(self.metrics[filepath]) < 2:
-            print("Not enough data to plot percentage change.")
-            return
-        
-        figure, axes = plt.subplots(4, 1, sharex=True, figsize=(12, 14))
-
-        self.__plot_metric_group(filepath, ['cyclomatic_complexity', 'maintainability_index'], axes[0]) 
-        self.__plot_metric_group(filepath, ['loc', 'lloc', 'sloc', 'comments', 'comment_blocks', 'blank_lines', 'single_comments'], axes[1])
-        self.__plot_metric_group(filepath, ['halstead_h1', 'halstead_h2', 'halstead_n1', 'halstead_n2'], axes[2])
-        self.__plot_metric_group(filepath, ['halstead_vocabulary', 'halstead_length', 'halstead_calculated_length', 'halstead_volume', 'halstead_difficulty', 'halstead_effort', 'halstead_time', 'halstead_bugs'], axes[3])
-        
-        figure.suptitle(f'Percentage Change in Metrics for {filepath}')
-        axes[-1].set_xlabel('Iteration')
-        figure.tight_layout(rect=[0, 0.03, 1, 0.97])
-
-        if output_path:
-            figure.savefig(output_path)
-        else:
-            figure.show()
-
-    def __plot_metric_group(self, filepath: str, metric_group: list[str], axis: plt.Axes):
-        for metric in metric_group:
-            self.__plot_metric(filepath, metric, axis)
-
-            axis.set_ylabel('Percentage Change (%)')
-            axis.grid(True)
-            axis.legend()
-
-    def __plot_metric(self, filepath: str, metric: str, axis: plt.Axes):
-        values = [getattr(readability_metrics, metric) for readability_metrics in self.metrics[filepath]]
-        if 0 in values:
-            print(f"Warning: Metric '{metric}' has zero values, skipping percentage change plot.")
-            return
-        percentage_changes = [(values[i] - values[i-1]) / values[i-1] * 100 for i in range(1, len(values))]
-        axis.plot(range(1, len(values)), percentage_changes, marker='o', label=metric)

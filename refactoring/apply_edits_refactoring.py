@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from refactoring.refactoring import Refactoring
 from refactoring.refactoring_tool import RefactoringTool
 from utility.cli import CLI
-from utility.code_file import CodeFile
 
 
 @dataclass
@@ -16,7 +15,7 @@ class EditArguments:
 
 
 class ApplyEditsRefactoring(Refactoring):
-    def __init__(self, code_file: CodeFile, segment_id: int, edits: list[EditArguments]):
+    def __init__(self, code: str, edits: list[EditArguments]):
         """Apply a sequence of verbatim search-and-replace edits to a segment, against the whole file.
 
         Each edit is applied in order against the result of the previous one, so a later
@@ -31,17 +30,15 @@ class ApplyEditsRefactoring(Refactoring):
         Raises:
             ValueError: If an edit's old_code does not appear in the current segment text exactly once.
         """
-        new_segment_code = code_file.get_segment(segment_id).code
+        new_code = code 
         for edit in edits:
-            occurrences = new_segment_code.count(edit.old_code)
+            occurrences = new_code.count(edit.old_code)
             if occurrences != 1:
                 raise ValueError(
                     f"old_code must match exactly once in the code segment, found {occurrences} occurrences: {edit.old_code!r}")
-            new_segment_code = new_segment_code.replace(edit.old_code, edit.new_code, 1)
+            new_code = new_code.replace(edit.old_code, edit.new_code, 1)
 
-        new_code_file = code_file.with_updated_segment(segment_id, new_segment_code)
-        super().__init__(code_file.code, new_code_file.code)
-        self.code_file = new_code_file
+        super().__init__(code, new_code)
 
     def tool_name(self) -> str:
         return "Apply Edits"
@@ -90,7 +87,7 @@ class ApplyEditsTool(RefactoringTool):
     __OLD_CODE_ALIASES = ("old_code", "old_text", "old_str")
     __NEW_CODE_ALIASES = ("new_code", "new_text", "new_str")
 
-    def call(code_file: CodeFile, segment_id: int, arguments: dict) -> ApplyEditsRefactoring:
+    def call(code: str, arguments: dict) -> ApplyEditsRefactoring:
         """ Calls the Apply Edits refactoring with the given arguments from the LLM. """
         edits = [
             EditArguments(
@@ -100,7 +97,7 @@ class ApplyEditsTool(RefactoringTool):
             for edit in arguments.get("edits", [])
         ]
         try:
-            return ApplyEditsRefactoring(code_file, segment_id, edits)
+            return ApplyEditsRefactoring(code, edits)
         except Exception as e:
             CLI.print_error(f"Failed to create ApplyEditsRefactoring with edits. Error: {e}")
             return None
