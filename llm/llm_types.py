@@ -14,6 +14,7 @@ class LLMConfig:
     base_url: str
     model_name: str
     timeout: int = 600  # Default timeout in seconds for LLM requests
+    temperature: float | None = None  # None uses the provider's default temperature
 
 
 @dataclass

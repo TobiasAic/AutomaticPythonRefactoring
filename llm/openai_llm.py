@@ -9,6 +9,7 @@ class OpenAILLM(LLM):
     """ Implementation of the LLM interface for interacting with the old completions OpenAI API. """
     def __init__(self, config: LLMConfig):
         self.model_name = config.model_name
+        self.temperature = config.temperature
         self.client = OpenAI(
             api_key=config.api_key,
             base_url=config.base_url,
@@ -29,7 +30,7 @@ class OpenAILLM(LLM):
         """
 
         # This is the old API, because some models (like big-pickle) do not support the new one
-        response = self.client.chat.completions.create(
+        kwargs = dict(
             model=self.model_name,
             messages=[
                 {"role": "user", "content": prompt}
@@ -37,6 +38,9 @@ class OpenAILLM(LLM):
             tools=tools,
             tool_choice="required" if require_tool_call else "auto"
         )
+        if self.temperature is not None:
+            kwargs["temperature"] = self.temperature
+        response = self.client.chat.completions.create(**kwargs)
 
         # if the LLM decides to call a tool, we return a ToolCall object
         if response.choices[0].finish_reason == "tool_calls":
