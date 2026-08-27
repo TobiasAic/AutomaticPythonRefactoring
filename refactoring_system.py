@@ -21,13 +21,12 @@ from utility.refactoring_system_state import RefactoringSystemState
 class RefactoringSystem:
     def __init__(self, config: Config, llm: LLM, count: int, code_divider_class: type[CodeDivider], approximate_segment_length: int):
         self.config = config
-        self.count = count
-        self.llm = llm
         self.code_divider_class = code_divider_class
         self.approximate_segment_length = approximate_segment_length
 
         self.git_repository = GitRepository(
             config.get_absolute_git_repo_path())
+        self.refactoring_generator = RefactoringGenerator(llm, count)
         self.refactoring_evaluator = RefactoringEvaluator(llm)
         self.readability_analyzer = ReadabilityAnalyzer()
         self.tester = PytestTester(
@@ -83,11 +82,6 @@ class RefactoringSystem:
         self.code_file = CodeFile(code, self.code_divider_class(self.approximate_segment_length))
         self.code_file.print_segment_lengths()
 
-        self.refactoring_generators = [
-            RefactoringGenerator(self.llm, self.count)
-            for segment_id in self.code_file.segment_ids()
-        ]
-
         for iteration in range(self.state.iteration, self.config.max_iterations):
             self.iteration = iteration
             iteration_start = time.time()
@@ -109,18 +103,18 @@ class RefactoringSystem:
             categories = self.state.categories_for_segment(segment_id)
             if len(categories) > 0:
                 self.refactor_segment(
-                    segment_id, filepath, self.refactoring_generators[segment_id], categories)
+                    segment_id, filepath, categories)
             else:
                 CLI.print_debug(
                     f"No more categories available for segment {segment_id + 1}. Skipping refactoring for this segment.")
 
             self.state.segment_index = position + 1
 
-    def refactor_segment(self, segment_id: int, filepath: str, refactoring_generator: RefactoringGenerator, categories: list[RefactoringCategory]):
+    def refactor_segment(self, segment_id: int, filepath: str, categories: list[RefactoringCategory]):
         CLI.print_banner(
             f"Segment {segment_id + 1} - Current MI: {self.readability_analyzer.metrics[filepath][-1].maintainability_index}", symbol="-")
         commit_history = self.git_repository.get_commit_history()
-        refactoring_suggestions = refactoring_generator.generate_refactorings(
+        refactoring_suggestions = self.refactoring_generator.generate_refactorings(
             self.code_file, segment_id, commit_history=commit_history, categories=categories)
 
         if refactoring_suggestions == []:
