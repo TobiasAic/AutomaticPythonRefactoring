@@ -102,16 +102,19 @@ class RefactoringSystem:
     def do_iteration(self, filepath: str):
         self.print_available_categories()
 
-        for segment_id in self.code_file.segment_ids()[self.state.segment_index:]:
+        segment_ids = self.code_file.segment_ids()
+        already_done_count = self.state.segment_index
+
+        for position, segment_id in enumerate(segment_ids[already_done_count:], start=already_done_count):
             categories = self.state.categories_for_segment(segment_id)
             if len(categories) > 0:
                 self.refactor_segment(
                     segment_id, filepath, self.refactoring_generators[segment_id], categories)
             else:
                 CLI.print_debug(
-                    f"No more categories available for segment {segment_id+1}. Skipping refactoring for this segment.")
+                    f"No more categories available for segment {segment_id + 1}. Skipping refactoring for this segment.")
 
-            self.state.segment_index = segment_id + 1
+            self.state.segment_index = position + 1
 
     def refactor_segment(self, segment_id: int, filepath: str, refactoring_generator: RefactoringGenerator, categories: list[RefactoringCategory]):
         CLI.print_banner(
