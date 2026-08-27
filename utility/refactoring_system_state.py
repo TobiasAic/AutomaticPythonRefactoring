@@ -16,7 +16,8 @@ class RefactoringSystemState:
     or manual stop without callers having to remember to save. """
     file_index: int = 0
     iteration: int = 0
-    categories: list[RefactoringCategory] = list(ALL_CATEGORIES)
+    categories: dict[RefactoringCategory, int] = field(
+        default_factory=lambda: {category: 1 for category in ALL_CATEGORIES})
     path: str | None = field(default=None, init=False, repr=False, compare=False)
 
     def __setattr__(self, name, value):
@@ -29,11 +30,19 @@ class RefactoringSystemState:
         self.path = path
         return self
 
+    @staticmethod
+    def initial(category_count: int, file_index: int = 0) -> "RefactoringSystemState":
+        """ Fresh state for a new file, giving every category `category_count` chances before it's dropped. """
+        return RefactoringSystemState(
+            file_index=file_index,
+            categories={category: category_count for category in ALL_CATEGORIES},
+        )
+
     def save(self, filepath: str):
         data = {
             "file_index": self.file_index,
             "iteration": self.iteration,
-            "categories": [category.get_name() for category in self.categories]
+            "categories": {category.get_name(): count for category, count in self.categories.items()},
         }
         with open(filepath, "w") as f:
             json.dump(data, f)
@@ -45,7 +54,7 @@ class RefactoringSystemState:
         return RefactoringSystemState(
             file_index=data["file_index"],
             iteration=data["iteration"],
-            categories= [CATEGORIES_BY_NAME[name] for name in data["categories"]]
+            categories={CATEGORIES_BY_NAME[name]: count for name, count in data["categories"].items()},
         ).bind(filepath)
 
     @staticmethod

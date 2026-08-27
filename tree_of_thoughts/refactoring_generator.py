@@ -10,6 +10,7 @@ from refactoring.multi_rename_refactoring import MultiRenameTool
 from refactoring.refactoring import Refactoring
 from tree_of_thoughts.refactoring_category import RefactoringCategory
 from utility.cli import CLI
+from collections.abc import Callable
 
 
 class RefactoringGenerator:
@@ -59,11 +60,12 @@ class RefactoringGenerator:
         },
     }
 
-    def __init__(self, llm: LLM, count: int = 1):
+    def __init__(self, llm: LLM, count: int, remove_category: Callable[[RefactoringCategory], None]):
         self.llm = llm
         if count <= 0:
             raise ValueError(f"Count must be a positive integer, got {count}.")
         self.count = count
+        self.remove_category = remove_category
 
     def generate_refactorings(self, code: str, commit_history: list, categories: list[RefactoringCategory]) -> list[Refactoring]:
         """Generate refactorings from different categories for a given code segment using the LLM.
@@ -110,8 +112,7 @@ class RefactoringGenerator:
 
             if response.tool_call.name == "no_refactoring":
                 CLI.print_debug(f"No meaningful refactoring found for {round_categories[i].get_name()}.")
-                # Remove the category from future consideration
-                categories.remove(round_categories[i])
+                self.remove_category(round_categories[i])
                 continue
 
             refactoring: Refactoring | None = self.__handle_tool_call_response(response.tool_call, code)

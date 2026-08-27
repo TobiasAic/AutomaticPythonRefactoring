@@ -2,7 +2,7 @@ from pathlib import Path
 
 from llm.llm import LLM
 from refactoring.refactoring import Refactoring
-from tree_of_thoughts.refactoring_category import ALL_CATEGORIES
+from tree_of_thoughts.refactoring_category import RefactoringCategory
 from tree_of_thoughts.refactoring_evaluator import RefactoringEvaluator
 from tree_of_thoughts.refactoring_generator import RefactoringGenerator
 from utility.cli import CLI
@@ -15,11 +15,12 @@ from utility.refactoring_system_state import RefactoringSystemState
 
 
 class RefactoringSystem:
-    def __init__(self, config: Config, llm: LLM, count: int):
+    def __init__(self, config: Config, llm: LLM, count: int, category_attempt_count: int = 1):
         self.config = config
+        self.category_attempt_count = category_attempt_count
 
         self.git_repository = GitRepository(config.get_absolute_git_repo_path())
-        self.refactoring_generator = RefactoringGenerator(llm, count)
+        self.refactoring_generator = RefactoringGenerator(llm, count, self.remove_category)
         self.refactoring_evaluator = RefactoringEvaluator(llm)
         self.tester = PytestTester(pyenv_name=config.pyenv_name,
                                    test_file_path=config.get_absolute_test_file_path())
@@ -33,7 +34,9 @@ class RefactoringSystem:
 
             filepaths = self.config.get_absolute_file_paths()
             for file_index in range(self.state.file_index, len(filepaths)):
-                self.state = RefactoringSystemState(file_index=file_index).bind(self.state_path)
+                if file_index != self.state.file_index:
+                    self.state = RefactoringSystemState.initial(
+                        self.category_attempt_count, file_index=file_index).bind(self.state_path)
                 self._refactor_file(filepaths[file_index])
 
             RefactoringSystemState.clear(self.state_path)
@@ -46,7 +49,7 @@ class RefactoringSystem:
                 f"Resuming from checkpoint: file {self.state.file_index + 1}, "
                 f"iteration {self.state.iteration + 1}, segment {self.state.segment_index + 1}")
         else:
-            self.state = RefactoringSystemState().bind(self.state_path)
+            self.state = RefactoringSystemState.initial(self.category_attempt_count).bind(self.state_path)
             if self.git_repository.branch_exists(self.config.branch_name):
                 self.git_repository.checkout_branch(self.config.branch_name)
             else:
@@ -64,13 +67,19 @@ class RefactoringSystem:
         for iteration in range(self.state.iteration, self.config.max_iterations):
             with CLI.print_with_duration(f"Iteration {iteration + 1} completed"):
                 CLI.print_banner(f"Iteration {iteration + 1}")
-                if len(self.state.categories) > 0:
+                if self._categories_available():
                     self._print_available_categories()
                     self._do_iteration(filepath)
                 else:
                     print("No more categories, dont")
                     break
                 self.state.iteration = iteration + 1
+
+    def _categories_available(self) -> bool:
+        for category_count in self.state.categories.values():
+            if category_count > 0:
+                return True
+        return False
 
     def _do_iteration(self, filepath: str):
         refactoring_suggestions = self._generate_refactorings(filepath)
@@ -86,9 +95,13 @@ class RefactoringSystem:
     def _generate_refactorings(self, filepath):
         code = self._read_file(filepath)
         commit_history = self.git_repository.get_commit_history()
+        categories = [category for category, count in self.state.categories.items() if count > 0]
         refactoring_suggestions = self.refactoring_generator.generate_refactorings(
-            code=code, commit_history=commit_history, categories=self.state.categories)
+            code=code, commit_history=commit_history, categories=categories)
         return refactoring_suggestions
+
+    def remove_category(self, category: RefactoringCategory):
+        self.state.categories[category] -= 1
 
     def _evaluate_refactorings(self, filepath, refactoring_suggestions):
         self.refactoring_evaluator.batch_evaluate(refactoring_suggestions)
@@ -165,5 +178,5 @@ class RefactoringSystem:
             f.write(content)
 
     def _print_available_categories(self):
-        for category in ALL_CATEGORIES:
-            print(f"{category}: {category in self.state.categories}")
+        for category, count in self.state.categories.items():
+            print(f"{category}: {count}")
