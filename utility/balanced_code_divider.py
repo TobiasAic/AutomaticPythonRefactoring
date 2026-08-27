@@ -5,29 +5,32 @@ from utility.code_segmentation import CodeBlock, CodeSegmentation
 
 
 class BalancedCodeDivider(CodeDivider):
-    def __init__(self, code: str, approximate_lines: int = 500):
+    def __init__(self, approximate_lines: int = 500):
         self.approximate_lines = approximate_lines
         self.labeler = CodeLabeler()
+        self.max_lines = None
 
+    def divide(self, code: str) -> list[CodeSegment]:
         lines = code.splitlines(keepends=True)
         num_segments, max_lines = self._compute_target_segmentation(
-            len(lines), approximate_lines)
+            len(lines), self.approximate_lines)
         self.max_lines = max_lines
 
         labels = self.labeler.compute_labels(code)
         segmentation = self.split_in_segments(labels, max_lines, num_segments)
-        self.segments = [
+        segments = [
             CodeSegment(id=i, code="".join(
                 lines[block.start_line:block.end_line + 1]))
             for i, block in enumerate(segmentation.get_blocks())
         ]
 
-        self.__check_correct_segmentation(code)
+        self.__check_correct_segmentation(code, segments)
+        return segments
 
-    def __check_correct_segmentation(self, given_code):
-        if self.get_code() != given_code:
+    def __check_correct_segmentation(self, given_code: str, segments: list[CodeSegment]):
+        if "".join(segment.code for segment in segments) != given_code:
             CLI.print_error(
-                f"Code was incorrectly divided into {self.get_number_of_segments()} segments.")
+                f"Code was incorrectly divided into {len(segments)} segments.")
 
     def _compute_target_segmentation(self, total_lines: int, approximate_lines: int) -> tuple[int, int]:
         """Picks a target segment count and a size cap close to approximate_lines.
@@ -43,58 +46,6 @@ class BalancedCodeDivider(CodeDivider):
         # ceil(total_lines / num_segments)
         max_lines = -(-total_lines // num_segments)
         return num_segments, max_lines
-
-    def get_segments(self) -> list[CodeSegment]:
-        """Returns a list of code segments."""
-        return list(self.segments)
-
-    def get_number_of_segments(self) -> int:
-        """Returns the number of code segments."""
-        return len(self.segments)
-
-    def get_code(self) -> str:
-        """ Returns the complete code reconstructed from the segments. """
-        return "".join(segment.code for segment in self.segments)
-
-    def replace_segment(self, new_segment: CodeSegment, remember: bool = True) -> str:
-        """Replaces a code segment at the specified index with a new segment and returns the complete code.
-
-        Args:
-            new_segment: A segment object containing the segment ID to replace and the new code.
-            remember: If True, persist the replacement in self.segments.
-
-        Returns:
-            The complete code reconstructed from the updated segments.
-        """
-        new_segment.code = new_segment.code.rstrip() + "\n"  # Ensure the new segment ends with a newline
-        segments = list(self.segments)
-        for i, segment in enumerate(segments):
-            if segment.id == new_segment.id:
-                segments[i] = new_segment
-                break
-        else:
-            raise ValueError(
-                f"No segment with id {new_segment.id} exists.")
-
-        if remember:
-            self.segments = segments
-
-        return "".join(segment.code for segment in segments)
-
-    def print_segment_lengths(self):
-        """Prints the lengths of each code segment."""
-        for segment in self.segments:
-            print(
-                f"Segment {segment.id}: {len(segment.code.splitlines())} lines")
-
-    def show_segments(self, filepath: str):
-        """Save a copy of the file with the segments indicated by ---
-
-        Args:
-            filepath: The path to the file where the segments will be saved.
-        """
-        with open(filepath, "w") as f:
-            f.write("\n---%---\n".join(segment.code for segment in self.segments))
 
     def split_in_segments(self, labels: list[tuple[str]], max_lines: int = 250, num_segments: int = 1) -> CodeSegmentation:
         blocks = self.split_in_blocks(labels)
@@ -269,8 +220,11 @@ if __name__ == "__main__":
         with open(test_file, "r") as f:
             source_code = f.read()
 
-        divider = BalancedCodeDivider(source_code, approximate_lines=500)
+        divider = BalancedCodeDivider(approximate_lines=500)
+        segments = divider.divide(source_code)
 
         from pathlib import Path
-        divider.print_segment_lengths()
-        divider.show_segments(Path(test_file).name)
+        for segment in segments:
+            print(f"Segment {segment.id}: {len(segment.code.splitlines())} lines")
+        with open(Path(test_file).name, "w") as f:
+            f.write("\n---%---\n".join(segment.code for segment in segments))

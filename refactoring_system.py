@@ -8,7 +8,8 @@ from tree_of_thoughts.refactoring_category import RefactoringCategory
 from tree_of_thoughts.refactoring_evaluator import RefactoringEvaluator
 from tree_of_thoughts.refactoring_generator import RefactoringGenerator
 from utility.cli import CLI
-from utility.code_divider import CodeDivider, CodeSegment
+from utility.code_divider import CodeDivider
+from utility.code_file import CodeFile
 from utility.compiler import Compiler
 from utility.config import Config
 from utility.git_repository import GitRepository
@@ -79,13 +80,12 @@ class RefactoringSystem:
             self.readability_analyzer.save(self.metrics_path)
 
         code = self.__read_file(filepath)
-        code_divider = self.code_divider_class(
-            code, self.approximate_segment_length)
-        code_divider.print_segment_lengths()
+        self.code_file = CodeFile(code, self.code_divider_class(self.approximate_segment_length))
+        self.code_file.print_segment_lengths()
 
         self.refactoring_generators = [
             RefactoringGenerator(self.llm, self.count)
-            for segment in code_divider.get_segments()
+            for segment_id in self.code_file.segment_ids()
         ]
 
         for iteration in range(self.state.iteration, self.config.max_iterations):
@@ -93,32 +93,32 @@ class RefactoringSystem:
             iteration_start = time.time()
             CLI.print_banner(
                 f"Iteration {iteration + 1}")
-            self.do_iteration(filepath, code_divider)
+            self.do_iteration(filepath)
             self.state.iteration = iteration + 1
             self.state.segment_index = 0
             print(
                 f"Iteration {iteration + 1} completed in {self.format_timespan(time.time() - iteration_start)}")
 
-    def do_iteration(self, filepath: str, code_divider: CodeDivider):
-        self.print_available_categories(code_divider)
+    def do_iteration(self, filepath: str):
+        self.print_available_categories()
 
-        for segment in code_divider.get_segments()[self.state.segment_index:]:
-            categories = self.state.categories_for_segment(segment.id)
+        for segment_id in self.code_file.segment_ids()[self.state.segment_index:]:
+            categories = self.state.categories_for_segment(segment_id)
             if len(categories) > 0:
                 self.refactor_segment(
-                    segment, filepath, code_divider, self.refactoring_generators[segment.id], categories)
+                    segment_id, filepath, self.refactoring_generators[segment_id], categories)
             else:
                 CLI.print_debug(
-                    f"No more categories available for segment {segment.id+1}. Skipping refactoring for this segment.")
+                    f"No more categories available for segment {segment_id+1}. Skipping refactoring for this segment.")
 
-            self.state.segment_index = segment.id + 1
+            self.state.segment_index = segment_id + 1
 
-    def refactor_segment(self, code_segment: CodeSegment, filepath: str, code_divider: CodeDivider, refactoring_generator: RefactoringGenerator, categories: list[RefactoringCategory]):
+    def refactor_segment(self, segment_id: int, filepath: str, refactoring_generator: RefactoringGenerator, categories: list[RefactoringCategory]):
         CLI.print_banner(
-            f"Segment {code_segment.id + 1} - Current MI: {self.readability_analyzer.metrics[filepath][-1].maintainability_index}", symbol="-")
+            f"Segment {segment_id + 1} - Current MI: {self.readability_analyzer.metrics[filepath][-1].maintainability_index}", symbol="-")
         commit_history = self.git_repository.get_commit_history()
         refactoring_suggestions = refactoring_generator.generate_refactorings(
-            code_segment.code, commit_history=commit_history, categories=categories)
+            self.code_file, segment_id, commit_history=commit_history, categories=categories)
 
         if refactoring_suggestions == []:
             CLI.print_debug(
@@ -127,16 +127,15 @@ class RefactoringSystem:
 
         self.refactoring_evaluator.batch_evaluate(refactoring_suggestions)
 
+        original_code_file = self.code_file
         for refactoring in refactoring_suggestions:
-            original_code = self.__read_file(filepath)
-            self.apply_refactoring(
-                refactoring, filepath, code_segment.id, code_divider, remember=False)
+            self.apply_refactoring(refactoring, filepath, remember=False)
             refactoring.set_compiles(Compiler.try_compile_file(filepath))
             refactoring.set_tests_changed(self.tester.test_changed())
             refactoring.set_metrics(
                 ReadabilityAnalyzer.analyze_file(filepath))
             # revert refactoring to original code
-            self.__write_file(filepath, original_code)
+            self.__write_file(filepath, original_code_file.code)
 
         sorted_refactorings = self.sort_refactorings_by_evaluation(
             refactoring_suggestions)
@@ -144,17 +143,15 @@ class RefactoringSystem:
         final_candidates = self.filter_refactorings(sorted_refactorings)
 
         if self.config.show_tree:
-           self.apply_all_refactorings(sorted_refactorings, filepath, code_segment.id, code_divider) 
+           self.apply_all_refactorings(sorted_refactorings, filepath, segment_id)
         else:
-            self.apply_best_refactoring(
-                final_candidates[0], filepath, code_segment.id, code_divider)
+            self.apply_best_refactoring(final_candidates[0], filepath)
 
-    def apply_best_refactoring(self, best_refactoring: Refactoring, filepath: str, code_segment_id: int, code_divider: CodeDivider):
-        self.apply_refactoring(
-            best_refactoring, filepath, code_segment_id, code_divider, remember=True)
+    def apply_best_refactoring(self, best_refactoring: Refactoring, filepath: str):
+        self.apply_refactoring(best_refactoring, filepath, remember=True)
         self.git_repository.commit_changes(best_refactoring.get_commit_message())
 
-    def apply_all_refactorings(self, sorted_refactorings: list[Refactoring], filepath: str, code_segment_id: int, code_divider: CodeDivider):
+    def apply_all_refactorings(self, sorted_refactorings: list[Refactoring], filepath: str, code_segment_id: int):
         if len(sorted_refactorings) == 0:
             return
 
@@ -162,8 +159,7 @@ class RefactoringSystem:
 
         for refactoring in sorted_refactorings:
             self.git_repository.create_branch(f"{self.file_index}_{self.iteration}_{code_segment_id}_{refactoring.category.get_name()}")
-            self.apply_refactoring(
-                refactoring, filepath, code_segment_id, code_divider, remember=False)
+            self.apply_refactoring(refactoring, filepath, remember=False)
             self.git_repository.commit_changes(refactoring.get_commit_message())
             if best_refactoring is None and self.is_valid_refactoring(refactoring):
                 best_refactoring = refactoring
@@ -171,10 +167,9 @@ class RefactoringSystem:
             self.git_repository.go_to_previous_commit()
         self.git_repository.checkout_branch(self.config.branch_name)
 
-        # Update the code segment with the best refactoring if it exists 
+        # Update the code file with the best refactoring if it exists
         if best_refactoring is not None:
-            code_divider.replace_segment(
-                CodeSegment(id=code_segment_id, code=best_refactoring.new_code), remember=True)
+            self.code_file = best_refactoring.code_file
 
     def sort_refactorings_by_evaluation(self, refactorings: list) -> list:
         return sorted(refactorings, key=lambda r: r.evaluation.sorting_value() if r.evaluation else -4, reverse=True)
@@ -205,10 +200,11 @@ class RefactoringSystem:
             correct_string = "Correct" if refactoring.evaluation.correct else "Incorrect"
             return f"{correct_string}, {refactoring.evaluation.grade}, {short_description}, {tool_name}"
 
-    def apply_refactoring(self, refactoring: Refactoring, filepath, segment_id: int, code_divider: CodeDivider, remember: bool = True):
-        refactored_file = code_divider.replace_segment(CodeSegment(
-            id=segment_id, code=refactoring.new_code), remember=remember)
-        self.__write_file(filepath, refactored_file)
+    def apply_refactoring(self, refactoring: Refactoring, filepath, remember: bool = True):
+        new_code_file = refactoring.code_file if refactoring.code_file is not None else self.code_file
+        self.__write_file(filepath, new_code_file.code)
+        if remember:
+            self.code_file = new_code_file
 
     def format_timespan(self, seconds: float) -> str:
         return str(timedelta(seconds=seconds))
@@ -221,8 +217,8 @@ class RefactoringSystem:
         with open(filepath, "w") as f:
             f.write(content)
 
-    def print_available_categories(self, code_divider: CodeDivider):
-        for segment in code_divider.get_segments():
-            categories = self.state.categories_for_segment(segment.id)
+    def print_available_categories(self):
+        for segment_id in self.code_file.segment_ids():
+            categories = self.state.categories_for_segment(segment_id)
             print(
-                f"Segment {segment.id+1}: {', '.join([category.get_name() for category in categories])}")
+                f"Segment {segment_id+1}: {', '.join([category.get_name() for category in categories])}")

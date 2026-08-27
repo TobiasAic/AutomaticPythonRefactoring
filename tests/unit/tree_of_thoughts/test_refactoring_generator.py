@@ -3,6 +3,7 @@ import json
 import pytest
 
 from llm.llm_types import LLMResponse, ToolCall
+from tests.unit.refactoring.shared import single_segment_code_file
 from tree_of_thoughts.refactoring_category import ALL_CATEGORIES, CONDITIONAL_LOGIC
 from tree_of_thoughts.refactoring_generator import RefactoringGenerator
 
@@ -28,7 +29,7 @@ def test_generate_refactorings_removes_category_when_llm_finds_nothing():
     generator = RefactoringGenerator(llm, count=1)
     categories = [CONDITIONAL_LOGIC]
 
-    refactorings = generator.generate_refactorings("x = 1\n", commit_history=[], categories=categories)
+    refactorings = generator.generate_refactorings(single_segment_code_file("x = 1\n"), 0, commit_history=[], categories=categories)
 
     assert refactorings == []
     assert categories == []
@@ -41,7 +42,7 @@ def test_generate_refactorings_builds_refactoring_from_apply_edits_tool_call():
     generator = RefactoringGenerator(llm, count=1)
     categories = [CONDITIONAL_LOGIC]
 
-    refactorings = generator.generate_refactorings("x = 1\n", commit_history=[], categories=categories)
+    refactorings = generator.generate_refactorings(single_segment_code_file("x = 1\n"), 0, commit_history=[], categories=categories)
 
     assert len(refactorings) == 1
     assert refactorings[0].new_code == "x = 2\n"
@@ -54,7 +55,7 @@ def test_generate_refactorings_skips_response_with_no_tool_call():
     llm = ScriptedLLM([response])
     generator = RefactoringGenerator(llm, count=1)
 
-    refactorings = generator.generate_refactorings("x = 1\n", commit_history=[], categories=[CONDITIONAL_LOGIC])
+    refactorings = generator.generate_refactorings(single_segment_code_file("x = 1\n"), 0, commit_history=[], categories=[CONDITIONAL_LOGIC])
 
     assert refactorings == []
 
@@ -64,7 +65,7 @@ def test_generate_refactorings_skips_unknown_tool_name():
     llm = ScriptedLLM([response])
     generator = RefactoringGenerator(llm, count=1)
 
-    refactorings = generator.generate_refactorings("x = 1\n", commit_history=[], categories=[CONDITIONAL_LOGIC])
+    refactorings = generator.generate_refactorings(single_segment_code_file("x = 1\n"), 0, commit_history=[], categories=[CONDITIONAL_LOGIC])
 
     assert refactorings == []
 
@@ -75,7 +76,7 @@ def test_generate_refactorings_skips_apply_edits_call_that_fails_validation():
     llm = ScriptedLLM([response])
     generator = RefactoringGenerator(llm, count=1)
 
-    refactorings = generator.generate_refactorings("x = 1\n", commit_history=[], categories=[CONDITIONAL_LOGIC])
+    refactorings = generator.generate_refactorings(single_segment_code_file("x = 1\n"), 0, commit_history=[], categories=[CONDITIONAL_LOGIC])
 
     assert refactorings == []
 
@@ -85,7 +86,7 @@ def test_generate_refactorings_passes_code_segment_history_and_category_prompt_t
     llm = ScriptedLLM([response])
     generator = RefactoringGenerator(llm, count=1)
 
-    generator.generate_refactorings("x = 1\n", commit_history=["prior commit"], categories=[CONDITIONAL_LOGIC])
+    generator.generate_refactorings(single_segment_code_file("x = 1\n"), 0, commit_history=["prior commit"], categories=[CONDITIONAL_LOGIC])
 
     prompts, tools = llm.batch_calls[0]
     assert len(prompts) == 1

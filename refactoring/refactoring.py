@@ -9,6 +9,7 @@ from utility.readability_analyzer import ReadabilityMetrics
 
 if TYPE_CHECKING:
     from tree_of_thoughts.refactoring_category import RefactoringCategory
+    from utility.code_file import CodeFile
 
 
 class Refactoring:
@@ -21,6 +22,9 @@ class Refactoring:
         self.compiles: bool = None
         self.tests_changed: bool = None
         self.metrics: ReadabilityMetrics = None
+        # Set by subclasses that edit a CodeFile, so a RefactoringSystem can adopt
+        # the resulting marker-tagged state directly instead of re-deriving it.
+        self.code_file: "CodeFile | None" = None
 
     def get_diff(self) -> str:
         """Returns a unified diff between the old and new code.

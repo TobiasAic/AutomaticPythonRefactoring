@@ -10,6 +10,7 @@ from refactoring.multi_rename_refactoring import MultiRenameTool
 from refactoring.refactoring import Refactoring
 from tree_of_thoughts.refactoring_category import ALL_CATEGORIES, RefactoringCategory
 from utility.cli import CLI
+from utility.code_file import CodeFile
 
 
 class RefactoringGenerator:
@@ -66,12 +67,13 @@ class RefactoringGenerator:
                 f"Count {count} exceeds the number of available categories {len(ALL_CATEGORIES)} or is not positive.")
         self.count = count
 
-    def generate_refactorings(self, code_segment: str, commit_history: list, categories: list[RefactoringCategory]) -> list[Refactoring]:
+    def generate_refactorings(self, code_file: CodeFile, segment_id: int, commit_history: list, categories: list[RefactoringCategory]) -> list[Refactoring]:
         """Generate refactorings from different categories for a given code segment using the LLM.
 
         Args:
-            code_segment (str): The code segment to be refactored.
-            filepath (str): The path to the file containing the code segment.
+            code_file (CodeFile): The file being refactored.
+            segment_id (int): The id of the segment to be refactored. Only this segment's
+                clean text is ever shown to the LLM.
             commit_history (list): A list of previous commits. (This is given to the LLM to prevent repeated refactorings.)
             categories (list[RefactoringCategory]): The categories still available for this segment. Categories
                 for which the LLM finds no meaningful refactoring are removed from this list in place.
@@ -79,6 +81,7 @@ class RefactoringGenerator:
         Returns:
             List[Refactoring]: A list of generated refactoring candidates.
         """
+        code_segment = code_file.get_segment(segment_id).code
         prompt = self.prompt.format(
             code_segment=code_segment,
             commit_history=commit_history
@@ -117,25 +120,25 @@ class RefactoringGenerator:
                 continue
 
             refactoring = self.__handle_tool_call_response(
-                response.tool_call, code_segment)
+                response.tool_call, code_file, segment_id)
             if refactoring:
                 refactoring.category = round_categories[i]
                 refactorings.append(refactoring)
 
         return refactorings
 
-    def __handle_tool_call_response(self, tool_call: ToolCall, code_segment: str) -> Refactoring | None:
+    def __handle_tool_call_response(self, tool_call: ToolCall, code_file: CodeFile, segment_id: int) -> Refactoring | None:
         """ Generate a Refactoring object from a tool call response from the LLM. """
         arguments = json.loads(tool_call.arguments)
         CLI.print_debug(
             f"Received tool call for '{tool_call.name}'")
         try:
             if tool_call.name == "extract_method":
-                return ExtractMethodTool.call(code_segment=code_segment, arguments=arguments)
+                return ExtractMethodTool.call(code_file=code_file, segment_id=segment_id, arguments=arguments)
             if tool_call.name == "multi_rename":
-                return MultiRenameTool.call(code_segment=code_segment, arguments=arguments)
+                return MultiRenameTool.call(code_file=code_file, segment_id=segment_id, arguments=arguments)
             if tool_call.name == "apply_edits":
-                return ApplyEditsTool.call(code_segment=code_segment, arguments=arguments)
+                return ApplyEditsTool.call(code_file=code_file, segment_id=segment_id, arguments=arguments)
             else:
                 CLI.print_error(
                     f"Received tool call for unknown tool '{tool_call.name}'. Response content: {tool_call}")

@@ -6,7 +6,7 @@ from refactoring.multi_rename_refactoring import (
     RenameArguments,
     calculate_offset,
 )
-from tests.unit.refactoring.shared import example_code_file_path, read_file
+from tests.unit.refactoring.shared import example_code_file_path, read_file, single_segment_code_file
 
 
 def test_multi_rename_refactoring():
@@ -16,36 +16,35 @@ def test_multi_rename_refactoring():
         RenameArguments(context_code='progress = ', old_name='progress', new_name='new_progress'),
         RenameArguments(context_code='done: bool = False', old_name='done', new_name='new_done'),
     ]
+    code_file = single_segment_code_file(original_code)
 
-    refactoring = MultiRenameRefactoring(original_code, renames)
+    refactoring = MultiRenameRefactoring(code_file, 0, renames)
 
     expected_code = read_file("tests/test_files/multi_rename.py")
     assert refactoring.new_code == expected_code
 
 
-def test_calculate_offset_locates_identifier_within_context(tmp_path):
-    file_path = tmp_path / "sample.py"
-    file_path.write_text("x = 1\ny = 2\n")
+def test_calculate_offset_locates_identifier_within_context():
+    code_file = single_segment_code_file("x = 1\ny = 2\n")
 
-    offset = calculate_offset(str(file_path), "y = 2", "y")
+    offset = calculate_offset(code_file, 0, "y = 2", "y")
 
-    assert offset == "x = 1\n".__len__()
+    marked_code, _ = code_file.marked_code_and_offset(0)
+    assert marked_code[offset:].startswith("y = 2")
 
 
-def test_calculate_offset_rejects_non_unique_context_code(tmp_path):
-    file_path = tmp_path / "sample.py"
-    file_path.write_text("y = 2\ny = 2\n")
+def test_calculate_offset_rejects_non_unique_context_code():
+    code_file = single_segment_code_file("y = 2\ny = 2\n")
 
     with pytest.raises(ValueError, match="context_code"):
-        calculate_offset(str(file_path), "y = 2", "y")
+        calculate_offset(code_file, 0, "y = 2", "y")
 
 
-def test_calculate_offset_rejects_non_unique_identifier_within_context(tmp_path):
-    file_path = tmp_path / "sample.py"
-    file_path.write_text("y = y + 1\n")
+def test_calculate_offset_rejects_non_unique_identifier_within_context():
+    code_file = single_segment_code_file("y = y + 1\n")
 
     with pytest.raises(ValueError, match="old_name"):
-        calculate_offset(str(file_path), "y = y + 1", "y")
+        calculate_offset(code_file, 0, "y = y + 1", "y")
 
 
 def test_get_description_declares_the_multi_rename_function():
@@ -63,8 +62,9 @@ def test_call_builds_refactoring_from_arguments():
             {"context_code": "done: bool = False", "old_name": "done", "new_name": "new_done"},
         ]
     }
+    code_file = single_segment_code_file(original_code)
 
-    refactoring = MultiRenameTool.call(original_code, arguments)
+    refactoring = MultiRenameTool.call(code_file, 0, arguments)
 
     expected_code = read_file("tests/test_files/multi_rename.py")
     assert refactoring.new_code == expected_code
@@ -72,7 +72,8 @@ def test_call_builds_refactoring_from_arguments():
 
 def test_call_defaults_to_empty_changes_list_when_missing():
     original_code = read_file(example_code_file_path)
+    code_file = single_segment_code_file(original_code)
 
-    refactoring = MultiRenameTool.call(original_code, {})
+    refactoring = MultiRenameTool.call(code_file, 0, {})
 
     assert refactoring.new_code == original_code

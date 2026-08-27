@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from refactoring.refactoring import Refactoring
 from refactoring.refactoring_tool import RefactoringTool
 from utility.cli import CLI
+from utility.code_file import CodeFile
 
 
 @dataclass
@@ -15,29 +16,32 @@ class EditArguments:
 
 
 class ApplyEditsRefactoring(Refactoring):
-    def __init__(self, code_segment: str, edits: list[EditArguments]):
-        """Apply a sequence of verbatim search-and-replace edits to a code segment.
+    def __init__(self, code_file: CodeFile, segment_id: int, edits: list[EditArguments]):
+        """Apply a sequence of verbatim search-and-replace edits to a segment, against the whole file.
 
         Each edit is applied in order against the result of the previous one, so a later
         edit's old_code is matched against the already-edited text.
 
         Args:
-            code_segment (str): The code segment to refactor.
+            code_file (CodeFile): The file being refactored.
+            segment_id (int): The id of the segment to edit.
             edits (list[EditArguments]): The edits to apply, each identifying the code to
                 replace by exact, unique text rather than by line number.
 
         Raises:
-            ValueError: If an edit's old_code does not appear in the current text exactly once.
+            ValueError: If an edit's old_code does not appear in the current segment text exactly once.
         """
-        new_code = code_segment
+        new_segment_code = code_file.get_segment(segment_id).code
         for edit in edits:
-            occurrences = new_code.count(edit.old_code)
+            occurrences = new_segment_code.count(edit.old_code)
             if occurrences != 1:
                 raise ValueError(
                     f"old_code must match exactly once in the code segment, found {occurrences} occurrences: {edit.old_code!r}")
-            new_code = new_code.replace(edit.old_code, edit.new_code, 1)
+            new_segment_code = new_segment_code.replace(edit.old_code, edit.new_code, 1)
 
-        super().__init__(code_segment, new_code)
+        new_code_file = code_file.with_updated_segment(segment_id, new_segment_code)
+        super().__init__(code_file.code, new_code_file.code)
+        self.code_file = new_code_file
 
     def tool_name(self) -> str:
         return "Apply Edits"
@@ -86,7 +90,7 @@ class ApplyEditsTool(RefactoringTool):
     __OLD_CODE_ALIASES = ("old_code", "old_text", "old_str")
     __NEW_CODE_ALIASES = ("new_code", "new_text", "new_str")
 
-    def call(code_segment: str, arguments: dict) -> ApplyEditsRefactoring:
+    def call(code_file: CodeFile, segment_id: int, arguments: dict) -> ApplyEditsRefactoring:
         """ Calls the Apply Edits refactoring with the given arguments from the LLM. """
         edits = [
             EditArguments(
@@ -96,7 +100,7 @@ class ApplyEditsTool(RefactoringTool):
             for edit in arguments.get("edits", [])
         ]
         try:
-            return ApplyEditsRefactoring(code_segment, edits)
+            return ApplyEditsRefactoring(code_file, segment_id, edits)
         except Exception as e:
             CLI.print_error(f"Failed to create ApplyEditsRefactoring with edits {edits}. Error: {e}")
             return None
