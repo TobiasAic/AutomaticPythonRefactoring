@@ -70,6 +70,9 @@ class RefactoringCategory:
     def get_refactoring_suggestions(self) -> list[type[RefactoringSuggestion]]:
         return self._refactoring_suggestions
 
+    def __repr__(self) -> str:
+        return self._name
+
 
 CONDITIONAL_LOGIC = RefactoringCategory(
     name="CONDITIONAL_LOGIC",

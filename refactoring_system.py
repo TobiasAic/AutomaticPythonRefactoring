@@ -191,5 +191,5 @@ class RefactoringSystem:
             f.write(content)
 
     def _print_available_categories(self):
-        for category, count in self.state.categories.items():
-            print(f"{category}: {count}")
+        summary = ", ".join(f"{category}: {count}" for category, count in self.state.categories.items())
+        print(f"Available categories: {summary}")
