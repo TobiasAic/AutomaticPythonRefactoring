@@ -13,6 +13,7 @@ def make_config(**overrides) -> Config:
         branch_name="branch",
         pyenv_name="pyenv",
         test_file_path="tests",
+        refactoring_state_path="refactoring_state.json",
     )
     defaults.update(overrides)
     return Config(**defaults)
@@ -39,10 +40,10 @@ def test_get_absolute_test_file_path_joins_root_with_test_file_path():
     assert config.get_absolute_test_file_path() == os.path.join("/root", "tests")
 
 
-def test_get_absolute_statistics_directory_joins_root_with_statistics_directory():
-    config = make_config(statistics_directory="stats")
+def test_get_absolute_refactoring_state_path_joins_root_with_refactoring_state_path():
+    config = make_config(refactoring_state_path="stats/refactoring_state.json")
 
-    assert config.get_absolute_statistics_directory() == os.path.join("/root", "stats")
+    assert config.get_absolute_refactoring_state_path() == os.path.join("/root", "stats/refactoring_state.json")
 
 
 def test_str_includes_all_field_values():
@@ -65,8 +66,8 @@ def test_load_from_toml_with_explicit_root_path(tmp_path):
         branch_name = "refactor"
         pyenv_name = "3.12"
         test_file_path = "tests"
+        refactoring_state_path = "refactoring_state.json"
         max_iterations = 3
-        statistics_directory = "stats"
         show_tree = true
         """
     )
@@ -76,8 +77,13 @@ def test_load_from_toml_with_explicit_root_path(tmp_path):
     assert str(config.root_path) == "/explicit/root"
     assert config.target_file_paths == ["main.py"]
     assert config.branch_name == "refactor"
+    assert config.refactoring_state_path == "refactoring_state.json"
     assert config.max_iterations == 3
     assert config.show_tree is True
+    assert config.seed == 42
+    assert config.temperature is None
+    assert config.refactoring_idea_count == 3
+    assert config.category_attempt_count == 3
 
 
 def test_load_from_toml_defaults_root_path_to_config_file_directory(tmp_path):
@@ -89,8 +95,8 @@ def test_load_from_toml_defaults_root_path_to_config_file_directory(tmp_path):
         branch_name = "refactor"
         pyenv_name = "3.12"
         test_file_path = "tests"
+        refactoring_state_path = "refactoring_state.json"
         max_iterations = 1
-        statistics_directory = "stats"
         show_tree = false
         """
     )

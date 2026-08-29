@@ -17,18 +17,17 @@ from utility.refactoring_system_state import RefactoringSystemState
 
 
 class RefactoringSystem:
-    def __init__(self, config: Config, llm: LLM, count: int, category_attempt_count: int = 1):
+    def __init__(self, config: Config, llm: LLM):
         self.config = config
-        self.category_attempt_count = category_attempt_count
 
         self.git_repository = GitRepository(config.get_absolute_git_repo_path())
-        self.refactoring_generator = RefactoringGenerator(llm, count, self.remove_category)
+        self.refactoring_generator = RefactoringGenerator(
+            llm, config.refactoring_idea_count, self.remove_category)
         self.refactoring_evaluator = RefactoringEvaluator(llm)
         self.tester = PytestTester(pyenv_name=config.pyenv_name,
                                    test_file_path=config.get_absolute_test_file_path())
 
-        statistics_directory = config.get_absolute_statistics_directory()
-        self.state_path = statistics_directory + "/refactoring_state.json"
+        self.state_path = config.get_absolute_refactoring_state_path()
 
     def run(self):
         with CLI.print_with_duration("Finished refactoring."):
@@ -38,7 +37,7 @@ class RefactoringSystem:
             for file_index in range(self.state.file_index, len(filepaths)):
                 if file_index != self.state.file_index:
                     self.state = RefactoringSystemState.initial(
-                        self.category_attempt_count, file_index=file_index).bind(self.state_path)
+                        self.config.category_attempt_count, file_index=file_index).bind(self.state_path)
                 self._refactor_file(filepaths[file_index])
 
             RefactoringSystemState.clear(self.state_path)
@@ -52,7 +51,7 @@ class RefactoringSystem:
                 f"iteration {self.state.iteration + 1}, segment {self.state.segment_index + 1}")
         else:
             self.state = RefactoringSystemState.initial(
-                self.category_attempt_count).bind(self.state_path)
+                self.config.category_attempt_count).bind(self.state_path)
             if self.git_repository.branch_exists(self.config.branch_name):
                 self.git_repository.checkout_branch(self.config.branch_name)
             else:

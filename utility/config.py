@@ -17,9 +17,13 @@ class Config:
     branch_name: str
     pyenv_name: str
     test_file_path: str
+    refactoring_state_path: str
     max_iterations: int = None
-    statistics_directory: str = None
     show_tree: bool = False
+    seed: int = 42
+    temperature: float = None
+    refactoring_idea_count: int = 3
+    category_attempt_count: int = 3
 
     def __str__(self):
         return (
@@ -30,9 +34,13 @@ class Config:
             f"  branch_name='{self.branch_name}',\n"
             f"  pyenv_name='{self.pyenv_name}',\n"
             f"  test_file_path='{self.test_file_path}',\n"
+            f"  refactoring_state_path='{self.refactoring_state_path}',\n"
             f"  max_iterations={self.max_iterations},\n"
-            f"  statistics_directory='{self.statistics_directory}',\n"
-            f"  show_tree={self.show_tree}\n"
+            f"  show_tree={self.show_tree},\n"
+            f"  seed={self.seed},\n"
+            f"  temperature={self.temperature},\n"
+            f"  refactoring_idea_count={self.refactoring_idea_count},\n"
+            f"  category_attempt_count={self.category_attempt_count}\n"
             f")"
         )
 
@@ -45,8 +53,8 @@ class Config:
     def get_absolute_test_file_path(self) -> str:
         return os.path.join(self.root_path, self.test_file_path)
 
-    def get_absolute_statistics_directory(self) -> str:
-        return os.path.join(self.root_path, self.statistics_directory)
+    def get_absolute_refactoring_state_path(self) -> str:
+        return os.path.join(self.root_path, self.refactoring_state_path)
 
 
 def load_from_toml(file_path: str) -> "Config":
@@ -65,7 +73,11 @@ def load_from_toml(file_path: str) -> "Config":
         branch_name=data["branch_name"],
         pyenv_name=data["pyenv_name"],
         test_file_path=data["test_file_path"],
+        refactoring_state_path=data["refactoring_state_path"],
         max_iterations=data["max_iterations"],
-        statistics_directory=data["statistics_directory"],
-        show_tree=data["show_tree"]
+        show_tree=data["show_tree"],
+        seed=data.get("seed", 42),
+        temperature=data.get("temperature"),
+        refactoring_idea_count=data.get("refactoring_idea_count", 3),
+        category_attempt_count=data.get("category_attempt_count", 3)
     )
